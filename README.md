@@ -6,14 +6,10 @@ I wanted the PSP's Music player to look like a tape deck, so this plugin
 turns its last visualizer into an animated cassette: the reels turn, the tape
 winds from one reel to the other, and after 15 minutes it flips to Side B.
 
-Tested on my PSP-1000 with ARK-4. Use at your own risk of course. It is the
-companion to my [xmb_gamecache](https://github.com/beckerd/xmb_gamecache)
-plugin, and the two run happily together.
+Working beautifully on my PSP-1000 with ARK-4. Use at your own risk of course.
 
-A pair of VSH plugins for PSPs running **ARK-4 CFW** on the **6.61** firmware.
-Viz Tape replaces the **last visualizer** in the built-in Music player — the
-brown one with thin random lines — and gives it a small cassette icon in the
-visualizer selector. The other visualizers are unchanged.
+This was written by Astra and Opus5.5 if you do not want code written by AI on your PSP
+this project is not for you.
 
 ## What it does
 
