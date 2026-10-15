@@ -1,0 +1,20 @@
+TARGET = viz_tape
+OBJS = plugin.o profile.o safety.o ticket.o guard.o icon.o
+BUILD_PRX = 1
+PRX_EXPORTS = exports.exp
+USE_KERNEL_LIBC = 1
+USE_KERNEL_LIBS = 1
+PSP_FW_VERSION = 660
+PSP_LARGE_MEMORY = 0
+CFLAGS = -std=gnu99 -O2 -G0 -Wall -Wextra -Werror -fno-pic -fno-builtin
+ASFLAGS = $(CFLAGS)
+LIBS = -lpspsystemctrl_kernel -lpspusb_driver
+PSPSDK = $(shell psp-config --pspsdk-path)
+include $(PSPSDK)/lib/build.mak
+
+plugin.o: runtime.h profile.h safety.h icon.h
+icon.o: icon.h icon_resource.h
+safety.o: safety.h
+ticket.o: safety.h
+guard.o: safety.h
+profile.o: profile.h

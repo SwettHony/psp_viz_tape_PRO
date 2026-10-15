@@ -1,0 +1,18 @@
+TARGET = viz_tape_render
+OBJS = render_plugin.o tape.o animation.o mesh.o frame.o safety.o
+BUILD_PRX = 1
+PRX_EXPORTS = render.exp
+PSP_FW_VERSION = 660
+PSP_LARGE_MEMORY = 0
+CFLAGS = -std=gnu99 -O2 -G0 -Wall -Wextra -Werror -fno-pic -fno-builtin
+ASFLAGS = $(CFLAGS)
+LDFLAGS = -nostartfiles
+PSPSDK = $(shell psp-config --pspsdk-path)
+include $(PSPSDK)/lib/build.mak
+
+render_plugin.o: runtime.h tape.h mesh.h frame.h safety.h
+frame.o: frame.h tape.h mesh.h
+safety.o: safety.h
+mesh.o: mesh.h
+tape.o: tape.h
+animation.o: tape.h

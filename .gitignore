@@ -1,0 +1,19 @@
+*.o
+*.elf
+*.prx
+build/
+captures/
+backups/
+.DS_Store
+PARAM.SFO
+__pycache__/
+*.pyc
+/visualizer.rco
+/SHA256SUMS
+/releases/
+*.rco
+*.gim
+*.bin
+*.zip
+# Local development notes, safety review and reverse-engineering tools
+notes/
