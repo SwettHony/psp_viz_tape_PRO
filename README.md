@@ -1,4 +1,5 @@
 # Viz Tape — cassette visualizer for the PSP Music player
+<img width="440" height="496" alt="Screenshot 2026-10-14 at 10 45 55 PM" src="https://github.com/user-attachments/assets/ac097019-8985-4320-aab3-720a413feb3b" />
 
 ![Viz Tape: the cassette slides in, winds and flips from Side A to Side B](docs/viz_tape.gif)
 
@@ -140,9 +141,6 @@ the Music player at that file (in RAM) after checking its exact size and
 checksum. Only the last visualizer's thumbnail differs. Nothing is ever
 written to flash.
 
-
-
-<img width="440" height="496" alt="Screenshot 2026-10-14 at 10 45 55 PM" src="https://github.com/user-attachments/assets/ac097019-8985-4320-aab3-720a413feb3b" />
 
 
 ## Disclaimer
