@@ -1,31 +1,30 @@
-"""Build the public binary release from an explicit list; never include firmware."""
+"""Build the public release ZIP: a seplugins/viz_tape folder to copy onto the
+memory card, plus the docs. Never includes firmware or Sony resources."""
 import hashlib
-import json
 from pathlib import Path
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 root = Path(__file__).resolve().parents[1]
-version = '1.0'
-files = (
-    'viz_tape.prx', 'viz_tape_render.prx', 'enabled.txt',
-    'README.md', 'INSTALL.txt', 'CHANGELOG.md', 'LICENSE',
-    'tools/apply_icon_patch.py', 'assets/visualizer-icon.patch.json',
-    'assets/cassette-icon.svg',
-)
-contents = {name: (root/name).read_bytes() for name in files}
-patch = json.loads(contents['assets/visualizer-icon.patch.json'])
-# visualizer.rco is not shipped; its line verifies the copy the user creates
-# with tools/apply_icon_patch.py in the extracted folder.
-contents['SHA256SUMS'] = (''.join(
+version = '1.1'
+card = 'seplugins/viz_tape/'
+files = {
+    card + 'viz_tape_render.prx': 'viz_tape_render.prx',
+    card + 'viz_tape.prx': 'viz_tape.prx',
+    'INSTALL.txt': 'INSTALL.txt',
+    'README.md': 'README.md',
+    'CHANGELOG.md': 'CHANGELOG.md',
+    'LICENSE': 'LICENSE',
+}
+contents = {name: (root/source).read_bytes() for name, source in files.items()}
+contents['SHA256SUMS'] = ''.join(
     f'{hashlib.sha256(data).hexdigest()}  {name}\n'
-    for name, data in contents.items()) +
-    f"{patch['output_sha256']}  visualizer.rco\n").encode('ascii')
+    for name, data in contents.items()).encode('ascii')
 out = root/'releases'
 out.mkdir(exist_ok=True)
 archive = out/f'viz_tape-v{version}.zip'
 with ZipFile(archive, 'w', compression=ZIP_DEFLATED) as package:
     for name, data in contents.items():
-        info = ZipInfo(name, date_time=(2026, 10, 14, 0, 0, 0))
+        info = ZipInfo(name, date_time=(2026, 10, 15, 0, 0, 0))
         info.compress_type = ZIP_DEFLATED
         info.external_attr = 0o100644 << 16
         package.writestr(info, data)

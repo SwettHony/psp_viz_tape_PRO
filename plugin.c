@@ -12,21 +12,21 @@
 #include "safety.h"
 #include "icon.h"
 
-PSP_MODULE_INFO("viz_tape", PSP_MODULE_KERNEL, 1, 0);
-#define VIZ_TAPE_VERSION "1.0"
+PSP_MODULE_INFO("viz_tape", PSP_MODULE_KERNEL, 1, 1);
+#define VIZ_TAPE_VERSION "1.1"
 PSP_NO_CREATE_MAIN_THREAD();
 
 static STMOD_HANDLER previous_handler;
-static volatile TapeBridge * volatile renderer_bridge;
-static volatile SceUID renderer_uid = -1;
 static volatile unsigned event, patched_base, seek_event;
-static int icon_ready;
+static volatile int icon_ready;
 static volatile unsigned icon_event;
 static const char *const icon_events[] = {
     "ICON skipped: resource missing or failed validation",
     "ICON ready: waiting for Music player",
     "ICON cassette resource selected in RAM",
-    "ICON skipped: Music player layout/path mismatch"
+    "ICON skipped: Music player layout/path mismatch",
+    "ICON created visualizer.rco from the stock resource",
+    "ICON not created: stock resource differs (unsupported firmware); stock icon kept"
 };
 static const char *const seek_events[] = {
     "", "SEEK fast-forward/rewind state found", "SEEK skipped: playback state layout mismatch"
@@ -128,8 +128,6 @@ static void patch_visualizer(SceModule *module)
     bridge->api = bindings;
     bridge->ready = TAPE_READY;
     *slot = draw;
-    renderer_bridge = bridge;
-    renderer_uid = renderer->modid;
     sceKernelDcacheWritebackAll();
     sceKernelCpuResumeIntr(irq);
     patched_base = module->text_addr;
@@ -159,19 +157,24 @@ static int on_module_start(SceModule *module)
     return result;
 }
 
+/* status.txt is a short startup summary: one line per state change (icon,
+ * seeking, cassette hook) during the first five minutes, then nothing. */
 static int reporter(SceSize args, void *argp)
 {
-    unsigned i, last_event = ~0u, last_icon_event = ~0u, last_seek_event = ~0u;
+    unsigned i, last_event = 0, last_icon_event = 1, last_seek_event = 0;
     (void)args; (void)argp;
     for (i = 0; i < 60; ++i) {
-        TapeStatus snapshot;
-        SceModule *m;
-        volatile TapeBridge *bridge;
         unsigned current;
-        int valid = 0, irq;
         sceKernelDelayThread(5000000);
         /* Stop card logging when USB storage is activated for the host. */
         if (usb_active()) break;
+        /* First start without a valid icon: make it from the stock resource,
+         * after XMB has settled and before the Music player usually opens. */
+        if (i == 0 && !icon_ready) {
+            int built = tape_icon_build();
+            icon_event = built ? 4 : 5;
+            icon_ready = built;
+        }
         if (guarded && (i+1)*5 >= TAPE_GUARD_SECONDS) {
             guarded = 0;
             if (!tape_guard_finish()) report("WARNING: could not clear boot-guard.txt\n");
@@ -191,21 +194,6 @@ static int reporter(SceSize args, void *argp)
             report("%s; visualizer=%08X\n", events[current], patched_base);
             last_event = current;
         }
-        irq = sceKernelCpuSuspendIntr();
-        m = sceKernelFindModuleByUID(renderer_uid);
-        bridge = renderer_bridge;
-        if (bridge && module_contains(m, (uintptr_t)bridge, sizeof *bridge)) {
-            snapshot = bridge->status;
-            valid = 1;
-        }
-        sceKernelCpuResumeIntr(irq);
-        if (valid && (i < 3 || i % 3 == 0))
-            report("frames=%u audio=%u ff=%u rew=%u rectangles=%u errors=%u alpha=%u render_us=%u max_us=%u\n",
-                   (unsigned)snapshot.frames, (unsigned)snapshot.audio_frames,
-                   (unsigned)snapshot.forward_frames, (unsigned)snapshot.rewind_frames,
-                   (unsigned)snapshot.max_rectangles, (unsigned)snapshot.errors,
-                   (unsigned)snapshot.last_alpha, (unsigned)snapshot.last_frame_us,
-                   (unsigned)snapshot.max_frame_us);
     }
     return sceKernelExitDeleteThread(0);
 }
@@ -215,29 +203,26 @@ int module_start(SceSize args, void *argp)
 {
     SceUID fd, tid;
     unsigned version;
-    int persistent;
     (void)args; (void)argp;
     if (sceKernelInitKeyConfig() != PSP_INIT_KEYCONFIG_VSH || sceKernelGetModel() != 0) return 1;
     version = sceKernelDevkitVersion();
     if (version != 0x06060010 && version != 0x06060110) return 1;
     if (usb_active()) return 1;
-    persistent = tape_is_persistent();
-    if (!persistent && !tape_consume_test_ticket()) return 1;
+    /* Enabled by its PLUGINS.TXT line alone, like any ARK plugin. */
     fd = sceIoOpen(log_path, PSP_O_WRONLY|PSP_O_CREAT|PSP_O_TRUNC, 0777);
     if (fd >= 0) sceIoClose(fd);
-    if (persistent && !tape_guard_begin()) {
+    if (!tape_guard_begin()) {
         report("Viz Tape " VIZ_TAPE_VERSION " SKIPPED: the previous start did not finish cleanly "
                "(or boot-guard.txt could not be written). Hooks are off for this "
                "start only; the next start tries again.\n");
         return 1;
     }
-    guarded = persistent;
-    report("Viz Tape " VIZ_TAPE_VERSION " %s; devkit=%08X model=0\n",
-           persistent ? "persistent mode" : "one-boot test; ticket consumed", version);
+    guarded = 1;
+    report("Viz Tape " VIZ_TAPE_VERSION " started; devkit=%08X model=0\n", version);
     icon_ready = tape_icon_resource_ready();
     icon_event = icon_ready ? 1 : 0;
     previous_handler = sctrlHENSetStartModuleHandler(on_module_start);
-    tid = sceKernelCreateThread("VizTapeStatus", reporter, 0x30, 4096, 0, 0);
+    tid = sceKernelCreateThread("VizTapeStatus", reporter, 0x30, 8192, 0, 0);
     if (tid >= 0 && sceKernelStartThread(tid, 0, 0) < 0) {
         sceKernelDeleteThread(tid);
         tid = -1;

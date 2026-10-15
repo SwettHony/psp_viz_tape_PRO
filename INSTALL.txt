@@ -1,124 +1,53 @@
-VIZ TAPE 1.0 — MANUAL INSTALLATION
-Built-in PSP Music player | PSP-1000 | ARK-4 | captured 6.61 firmware layout
+VIZ TAPE 1.1 — HOW TO INSTALL
+An animated cassette for the PSP Music player (PSP-1000, ARK-4, firmware 6.61)
 
-The last brown-line visualizer becomes a cassette with its own small icon.
-Red A and blue B alternate every 15 minutes of active visible playback.
-The plugin stays enabled after restarting; the animation clock starts over.
+WHAT YOU NEED
+  - Your PSP with ARK-4, and a USB cable (or a memory card reader).
+  - This ZIP, unzipped. It contains a "seplugins" folder.
 
-FILES TO COPY TO THE CARD
-  viz_tape_render.prx   renderer
-  viz_tape.prx          kernel hook
-  enabled.txt           persistent activation marker
-  visualizer.rco        cassette selector icon (created in step 1)
+INSTALL
+  1. Connect the PSP to your computer and turn on USB mode.
 
-ms0: means the root of the PSP memory card. Use the card's existing
-SEPLUGINS/seplugins folder. No installer script is required.
+  2. Copy the "seplugins" folder from this ZIP onto the memory card,
+     at the top level (next to the PSP folder). If the card already has a
+     seplugins or SEPLUGINS folder, let your computer merge the two.
+     Nothing that is already there gets replaced.
 
-1. CREATE THE CASSETTE ICON (visualizer.rco)
-  The icon is a small patch for Sony's own resource, so visualizer.rco is
-  created from YOUR copy of the stock 6.61 file
-  flash0:/vsh/resource/visualizer_plugin.rco. Sony's file is never included
-  in the download.
+  3. Open seplugins/PLUGINS.TXT on the memory card with a plain-text editor
+     (TextEdit on a Mac: Format > Make Plain Text; Notepad on Windows).
+     If there is no PLUGINS.TXT, create one. Add these two lines at the end:
 
-  Release ZIP: in the extracted folder, run (Python 3 only):
+       vsh, ms0:/seplugins/viz_tape/viz_tape_render.prx, on
+       vsh, ms0:/seplugins/viz_tape/viz_tape.prx, on
 
-    python3 tools/apply_icon_patch.py /path/to/visualizer_plugin.rco
+     Keep any lines that are already there. Save it as PLUGINS.TXT.
 
-  This writes visualizer.rco next to the PRXs. It checks the stock file's
-  exact SHA-256 first and never overwrites an existing file.
+  4. Eject the memory card on your computer, exit USB mode and restart the PSP.
 
-  Project checkout: make creates visualizer.rco automatically from
-  captures/run_000/visualizer_plugin.rco, or from another copy with
-  make ICON_SOURCE=/path/to/visualizer_plugin.rco
+  5. Play a song in the Music player and switch to the LAST visualizer.
 
-  Without the stock file, skip this step: the cassette still plays, with
-  the stock brown thumbnail in the selector.
+  The first time the PSP starts with Viz Tape, it makes the little cassette
+  icon for the visualizer menu by itself (a few seconds after the home screen
+  appears). Nothing else to do.
 
-2. CHECK THE FILES (OPTIONAL, MAC/LINUX TERMINAL)
-  In the extracted release folder or project root:
+UPDATING FROM AN OLDER VERSION
+  Change "on" to "off" on both Viz Tape lines in PLUGINS.TXT, copy the new
+  seplugins folder over the old one, then change them back to "on".
+  An enabled.txt from version 1.0 is no longer needed; you can delete it.
 
-    shasum -a 256 -c SHA256SUMS
+TURN OFF OR UNINSTALL
+  Turn off:  change "on" to "off" on both Viz Tape lines, then restart.
+  Uninstall: delete those two lines and the seplugins/viz_tape folder.
 
-  Every line should say OK. (If you skipped the icon, visualizer.rco is
-  reported missing; add --ignore-missing.)
+IF THE PSP WON'T START PROPERLY
+  Viz Tape skips itself for one start if the previous start crashed, so it
+  cannot get stuck in a loop. If you still need to, hold START while turning
+  the PSP on to start without any plugins, then turn Viz Tape off as above.
+  ARK's guide: https://github.com/PSP-Archive/ARK-4/wiki/Recovery
 
-INSTALL / UPGRADE
-  3. Back up seplugins/PLUGINS.TXT and any existing seplugins/viz_tape folder
-     to your computer. When upgrading, first set both existing Viz Tape entries
-     to off, then delete enabled.txt, test-once.txt and boot-guard.txt from
-     that folder if present. Preserve unrelated plugin entries.
-  4. Create seplugins/viz_tape on the card if needed. Copy viz_tape_render.prx,
-     viz_tape.prx and visualizer.rco into it, replacing older copies.
-  5. Wait for those copies to finish, then copy the supplied enabled.txt into
-     the same folder. Do not edit it: it must contain exactly
-     VIZ_TAPE_ENABLED followed by one LF newline (changed in 1.0). If a copy fails, leave
-     both entries off until all files have been copied successfully.
-  6. Optional card check, with the card mounted on the computer (replace
-     CARD with the card's volume name and adjust the SHA256SUMS path):
+IF THE CASSETTE DOESN'T SHOW UP
+  Check that both lines are in PLUGINS.TXT exactly as above, renderer first,
+  and that seplugins/viz_tape has viz_tape_render.prx and viz_tape.prx.
+  The plugin writes notes to seplugins/viz_tape/status.txt.
 
-       cd "/Volumes/CARD/seplugins/viz_tape"
-       shasum -a 256 -c --ignore-missing /path/to/extracted/SHA256SUMS
-
-     Expect four OK lines (three if you skipped the icon). If any fail,
-     leave both entries off and repeat the copies.
-  7. Open seplugins/PLUGINS.TXT as PLAIN TEXT (create it if needed). Add or
-     update these two lines in this order, with each entry appearing only once:
-
-     vsh, ms0:/seplugins/viz_tape/viz_tape_render.prx, on
-     vsh, ms0:/seplugins/viz_tape/viz_tape.prx, on
-
-     Keep other entries, including xmb_gamecache. Remove or turn off any old
-     viz_tape_probe.prx entry. Save as PLUGINS.TXT, not PLUGINS.TXT.rtf.
-  8. Safely eject the card, leave USB mode and restart XMB or reboot with ARK-4
-     active. Play music and choose the LAST visualizer: the little cassette.
-
-FINISHED CARD LAYOUT
-  seplugins/PLUGINS.TXT
-  seplugins/viz_tape/viz_tape_render.prx
-  seplugins/viz_tape/viz_tape.prx
-  seplugins/viz_tape/visualizer.rco
-  seplugins/viz_tape/enabled.txt
-
-Keep these names and paths. No source, test, build or probe files are needed.
-The plugin also creates status.txt (diagnostics) and, for the first 15 seconds
-after each start, boot-guard.txt in the same folder.
-
-DISABLE / UNINSTALL
-  To disable: change on to off on BOTH Viz Tape entries, then restart XMB.
-  To uninstall: remove those two entries and the seplugins/viz_tape folder,
-  then restart. Keep every unrelated plugin entry and folder.
-
-BOOT GUARD AND RECOVERY
-  While XMB starts, the plugin keeps boot-guard.txt on the card and removes it
-  after 15 seconds of clean running. If a start freezes or crashes before then,
-  the next start finds the file, skips the cassette hooks once and removes it;
-  the start after that tries again. A start fault therefore cannot become an
-  endless boot loop. Turning the PSP off, launching a game or switching to USB
-  mode within 15 seconds of an XMB start has the same harmless effect: the
-  cassette is skipped for one start and returns on the next.
-
-  If XMB still cannot start, fully power off and hold START while powering on
-  to temporarily bypass ARK plugins. Disable both Viz Tape entries, then
-  restart. ARK also provides R-trigger Recovery at power-on or when running
-  ARK Loader. A card reader can edit PLUGINS.TXT directly without the PSP.
-  Official guide: https://github.com/PSP-Archive/ARK-4/wiki/Recovery
-
-CHECKING THE RESULT
-  The last slot should display the cassette and its selector icon; the
-  spectrum slot should work normally. Check playback, pause/resume, Triangle
-  controls, changing effects and restarting XMB. Diagnostics are in
-  seplugins/viz_tape/status.txt:
-    PATCHED final brown-line slot 7          cassette hook installed
-    ICON cassette resource selected in RAM   selector icon installed
-    SKIPPED: the previous start did not...   boot guard skipped one start
-
-  Tested on a PSP-1000 with ARK-4 and 6.61. There are no firmware/flash
-  writes; other models and firmware are unverified, and a kernel or graphics
-  bug could still cause a freeze (see BOOT GUARD AND RECOVERY above).
-
-PRIVATE RESOURCE
-  visualizer.rco is derived from Sony's firmware resource. Create it from your
-  own copy and keep it for your own installation; do not publicly redistribute
-  it or the stock file.
-
-ARK plugin configuration: https://github.com/PSP-Archive/ARK-4/wiki/Plugins
+More details: https://github.com/beckerd/psp_viz_tape

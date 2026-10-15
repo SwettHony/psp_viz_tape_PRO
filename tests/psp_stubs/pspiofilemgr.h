@@ -1,4 +1,4 @@
-/* Host-only I/O stand-ins for the one-boot ticket test. Never used by PSP builds. */
+/* Host-only I/O stand-ins for the boot guard and icon tests. Never used by PSP builds. */
 #ifndef TEST_PSP_IO_H
 #define TEST_PSP_IO_H
 #define PSP_O_RDONLY 1

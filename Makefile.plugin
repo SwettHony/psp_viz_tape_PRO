@@ -1,5 +1,5 @@
 TARGET = viz_tape
-OBJS = plugin.o profile.o safety.o ticket.o guard.o icon.o
+OBJS = plugin.o profile.o safety.o guard.o icon.o icon_build.o
 BUILD_PRX = 1
 PRX_EXPORTS = exports.exp
 USE_KERNEL_LIBC = 1
@@ -14,7 +14,7 @@ include $(PSPSDK)/lib/build.mak
 
 plugin.o: runtime.h profile.h safety.h icon.h
 icon.o: icon.h icon_resource.h
+icon_build.o: icon.h icon_resource.h icon_patch.h
 safety.o: safety.h
-ticket.o: safety.h
 guard.o: safety.h
 profile.o: profile.h

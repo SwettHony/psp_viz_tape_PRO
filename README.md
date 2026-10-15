@@ -22,7 +22,8 @@ this project is not for you.
   with the reels spinning fast; rewind runs it backwards, flips included.
 - **Pause-aware.** Pausing, hiding the visualizer or putting the PSP to sleep
   stops the tape. Opening the visualizer slides the cassette in and latches it.
-- **Cassette icon** in the visualizer selector (optional; see below).
+- **Cassette icon** in the visualizer selector, made automatically on the
+  PSP the first time it starts.
 - **Light on the CPU.** Only the reel strip is redrawn while playing, and
   frames where nothing moved are reused: about 1.9 ms per frame at ~60 fps on
   a PSP-1000.
@@ -30,36 +31,31 @@ this project is not for you.
 
 ## Install
 
-You need three files from the [latest release](https://github.com/beckerd/psp_viz_tape/releases/latest)
-ZIP, plus the optional icon. [INSTALL.txt](INSTALL.txt) has the same steps
-with checksum checks.
-
-1. **Optional cassette icon.** The icon is a small patch for Sony's own
-   resource, so you create it from your PSP's stock
-   `flash0:/vsh/resource/visualizer_plugin.rco` (6.61). In the extracted ZIP:
-
-   ```sh
-   python3 tools/apply_icon_patch.py /path/to/visualizer_plugin.rco
-   ```
-
-   This checks the stock file's exact hash and writes `visualizer.rco`. Skip
-   this step if you don't have the file; the cassette still plays, with the
-   stock brown thumbnail in the selector.
-2. Create `ms0:/seplugins/viz_tape/` and copy `viz_tape_render.prx`,
-   `viz_tape.prx` and (if you made it) `visualizer.rco` into it.
-3. Copy the supplied `enabled.txt` into the same folder, unedited.
-4. Add these two lines to `ms0:/seplugins/PLUGINS.TXT` (create it if needed),
-   renderer first:
+1. Download `viz_tape-v1.1.zip` from the
+   [latest release](https://github.com/beckerd/psp_viz_tape/releases/latest)
+   and unzip it.
+2. Connect your PSP to your computer in USB mode.
+3. Copy the `seplugins` folder from the ZIP onto the root of the memory card.
+   If the card already has a `seplugins` (or `SEPLUGINS`) folder, let your
+   computer merge them; nothing else in it is replaced.
+4. Open `seplugins/PLUGINS.TXT` on the card in a plain-text editor (create it
+   if it doesn't exist) and add these two lines:
 
    ```
    vsh, ms0:/seplugins/viz_tape/viz_tape_render.prx, on
    vsh, ms0:/seplugins/viz_tape/viz_tape.prx, on
    ```
 
-5. Restart the XMB, play a song and choose the last visualizer (the cassette).
+5. Eject the card, exit USB mode and restart your PSP.
+6. Play a song in the Music player and switch to the last visualizer.
 
-Upgrading: turn both lines `off`, replace the files (including `enabled.txt`,
-whose contents changed in 1.0), then turn them back `on`.
+That's it. On the first start the plugin creates the cassette icon by itself
+(it shows up a few seconds after the XMB appears). [INSTALL.txt](INSTALL.txt)
+in the ZIP has the same steps, plus how to update and uninstall.
+
+**Updating from 1.0:** turn both lines `off`, copy the new `seplugins` folder
+over the old one, then turn them back `on`. The old `enabled.txt` is no
+longer used and can be deleted.
 
 ## Tested on
 
@@ -84,11 +80,11 @@ bad) are very welcome — please open an issue.
   [recovery guide](https://github.com/PSP-Archive/ARK-4/wiki/Recovery).
 - Diagnostics are written to `ms0:/seplugins/viz_tape/status.txt`:
   `PATCHED final brown-line slot 7` means the cassette is hooked,
-  `ICON cassette resource selected in RAM` means the icon is in use, and
+  `ICON created visualizer.rco from the stock resource` means the icon was
+  made, `ICON cassette resource selected in RAM` means it is in use, and
   `SEEK fast-forward/rewind state found` means seeking is detected.
-- If the cassette doesn't appear, check both PLUGINS.TXT lines, their order,
-  and that `enabled.txt` is the supplied file (exactly `VIZ_TAPE_ENABLED` and
-  one newline).
+- If the cassette doesn't appear, check both PLUGINS.TXT lines and their
+  order (renderer first).
 
 ## Known limitations
 
@@ -96,8 +92,10 @@ bad) are very welcome — please open an issue.
 - Only the last visualizer is replaced; the spectrum and others are untouched.
 - The tape clock restarts when the XMB restarts, and is not tied to the
   position in the song.
-- Don't remove the memory card while the Music player is open if you use the
-  cassette icon: the player reads `visualizer.rco` from the card.
+- Don't remove the memory card while the Music player is open: the player
+  reads the cassette icon's `visualizer.rco` from the card.
+- The icon is only made on the supported 6.61 firmware. On anything else the
+  stock icon stays (the cassette visualizer is skipped there anyway).
 
 ## Building from source
 
@@ -109,14 +107,12 @@ export PATH=$PSPDEV/bin:$PATH
 make
 ```
 
-`make` builds both PRXs, audits their imports and writes `SHA256SUMS`. It also
-creates `visualizer.rco` when a stock resource is available
-(`make ICON_SOURCE=/path/to/visualizer_plugin.rco`). `make release` builds the
-release ZIP.
+`make` builds both PRXs, audits their imports and writes `SHA256SUMS`.
+`make release` builds the release ZIP.
 
 `make host-check` runs the host tests (rendering, animation, mesh, frame cache,
-address checks, activation and boot guard) under AddressSanitizer and
-UndefinedBehaviorSanitizer. `make profile-check` and `make icon-check` also
+address checks, activation, boot guard and the on-PSP icon builder) under
+AddressSanitizer and UndefinedBehaviorSanitizer. `make profile-check` and `make icon-check` also
 verify the firmware signatures, but need private firmware captures that are
 not in this repository.
 
@@ -135,11 +131,14 @@ same PAF drawing functions the native effect uses, with no per-frame
 allocation. While the tape plays, only the reel strip is redrawn and the rest
 comes from a cache.
 
-For the icon, a second guarded change points the Music player's
-`visualizer_plugin.rco` path (in RAM) at `ms0:/seplugins/viz_tape/visualizer.rco`
-after checking that file's exact size and checksum. Only the last
-visualizer's thumbnail differs in that file. Nothing is ever written to
-flash.
+For the icon, the plugin carries a small patch: the new cassette image and
+the resource header that references it. On first start it reads the PSP's
+own `flash0:/vsh/resource/visualizer_plugin.rco` (read-only), checks that
+applying the patch gives exactly the expected result, and only then writes
+`ms0:/seplugins/viz_tape/visualizer.rco`. A second guarded change then points
+the Music player at that file (in RAM) after checking its exact size and
+checksum. Only the last visualizer's thumbnail differs. Nothing is ever
+written to flash.
 
 
 
@@ -165,6 +164,5 @@ projects.
 
 The cassette artwork and code were made for this project. The icon patch
 contains the new cassette image and the rebuilt 868-byte resource header that
-references it; every stock image is copied from your own file, and Sony's
-resource itself is not distributed. Please don't redistribute the
-`visualizer.rco` you create.
+references it; every stock image is copied from your own PSP's file, and
+Sony's resource itself is not distributed.

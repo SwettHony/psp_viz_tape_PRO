@@ -5,11 +5,7 @@ import json
 import re
 
 root = Path(__file__).resolve().parents[1]
-names = ['viz_tape_render.prx', 'viz_tape.prx', 'enabled.txt']
-match = re.search(r'^#define TAPE_ENABLE_TEXT (".*")$',
-                  (root / 'safety.h').read_text(), re.M)
-if not match or (root / 'enabled.txt').read_bytes() != json.loads(match[1]).encode('ascii'):
-    raise SystemExit('enabled.txt does not match the kernel activation marker')
+names = ['viz_tape_render.prx', 'viz_tape.prx']
 icon = root / 'visualizer.rco'
 if icon.exists():
     # The kernel only redirects to a resource with this exact size and FNV-1a.
@@ -31,5 +27,3 @@ lines = [f'{hashlib.sha256((root / name).read_bytes()).hexdigest()}  {name}\n'
 (root / 'SHA256SUMS').write_text(''.join(lines))
 print(f'Manual-install files ready in project root ({len(names)} files); '
       'checksums written to SHA256SUMS.')
-if not icon.exists():
-    print('NOTE: visualizer.rco is missing, so the cassette selector icon is not included.')

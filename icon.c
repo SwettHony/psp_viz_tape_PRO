@@ -26,11 +26,15 @@ int tape_icon_resource_ready(void)
 }
 
 /* A single data-string replacement in the captured 6.61 Music player. The
- * original path is only a signature, never opened for writing (or reading).
- * No instructions, imports, PAF widgets or firmware files are modified. */
+ * stock path is a RAM signature here; icon_build.c opens it read-only to
+ * create the card copy. No instructions, imports, PAF widgets or firmware
+ * files are modified. */
+const char tape_stock_icon_path[] = "flash0:/vsh/resource/visualizer_plugin.rco";
+
 int tape_icon_redirect(void *text, size_t size, uint32_t base)
 {
-    static const char original[] = "flash0:/vsh/resource/visualizer_plugin.rco";
+    const char *original = tape_stock_icon_path;
+    const size_t original_size = sizeof tape_stock_icon_path;
     static const char replacement[] = TAPE_ICON_PATH;
     static const uint32_t prefix[] = {
         0x27bdff70, 0xafb3007c, 0x00809821, 0x03a02021,
@@ -52,8 +56,8 @@ int tape_icon_redirect(void *text, size_t size, uint32_t base)
         words[TAPE_MUSIC_STRING_CALL/4] != (0x0c000000u | ((base+TAPE_MUSIC_STRING_CTOR)>>2)) ||
         words[TAPE_MUSIC_STRING_CALL/4+1] != (0x24a50000u | (path&0xffffu)) ||
         words[TAPE_MUSIC_EPILOGUE/4] != 0x03e00008u || words[TAPE_MUSIC_EPILOGUE/4+1] != 0x27bd0090u ||
-        memcmp(bytes+TAPE_MUSIC_ICON_PATH, original, sizeof original)) return 0;
-    for (i = 0; i < sizeof original; ++i)
+        memcmp(bytes+TAPE_MUSIC_ICON_PATH, original, original_size)) return 0;
+    for (i = 0; i < original_size; ++i)
         bytes[TAPE_MUSIC_ICON_PATH+i] = i < sizeof replacement ? replacement[i] : 0;
     return 1;
 }

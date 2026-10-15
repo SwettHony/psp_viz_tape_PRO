@@ -21,8 +21,9 @@ for name, allowed in [('viz_tape', allowed_kernel), ('viz_tape_render', allowed_
         sys.exit('Unreviewed import(s): ' + repr(imports - allowed))
     lines.append(name + ': ' + ', '.join(sorted(imports)))
     payload = Path(name+'.prx').read_bytes()
-    # The icon extension matches this exact read-only string in Music player
-    # RAM, then replaces it with an ms0: path. It never opens the flash path.
+    # The stock resource path is both the Music-player RAM signature and the
+    # file the kernel opens read-only (PSP_O_RDONLY) to create the card icon.
+    # It must appear exactly once; no other flash path may be present.
     signature = b'flash0:/vsh/resource/visualizer_plugin.rco\0'
     if name == 'viz_tape':
         if payload.count(signature) != 1:

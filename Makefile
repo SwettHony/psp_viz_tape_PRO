@@ -7,13 +7,10 @@ all:
 	$(MAKE) -f Makefile.render
 	$(MAKE) -f Makefile.plugin
 	python3 tools/audit_imports.py
-	@if [ -f visualizer.rco ]; then :; \
-	elif [ -f "$(ICON_SOURCE)" ]; then $(MAKE) visualizer.rco; \
-	else echo "NOTE: no stock resource at $(ICON_SOURCE); building without the cassette icon."; \
-	     echo "      Run: make ICON_SOURCE=/path/to/visualizer_plugin.rco"; fi
 	python3 tools/checksums.py
 
-# Cassette selector icon, created from the stock resource with the shipped patch.
+# Development only: the plugin creates this on the PSP itself. Building it here
+# needs a private copy of the stock resource (ICON_SOURCE) and is used by icon-check.
 visualizer.rco: assets/visualizer-icon.patch.json
 	rm -f visualizer.rco
 	python3 tools/apply_icon_patch.py "$(ICON_SOURCE)" --output visualizer.rco
@@ -42,11 +39,12 @@ host-check:
 	build/frame_test
 	cc -std=c99 -O2 -Wall -Wextra -Werror -g -fsanitize=address,undefined safety.c tests/safety_test.c -o build/safety_test
 	build/safety_test
-	cc -std=c99 -O2 -Wall -Wextra -Werror -g -fsanitize=address,undefined -Itests/psp_stubs ticket.c tests/ticket_test.c -o build/ticket_test
-	build/ticket_test
 	cc -std=c99 -O2 -Wall -Wextra -Werror -g -fsanitize=address,undefined -Itests/psp_stubs guard.c tests/guard_test.c -o build/guard_test
 	build/guard_test
 	python3 tests/icon_patch_test.py
+	python3 tools/build_icon_header.py --check
+	cc -std=c99 -O2 -Wall -Wextra -Werror -g -fsanitize=address,undefined -Itests/psp_stubs icon.c icon_build.c tests/icon_build_test.c -o build/icon_build_test
+	build/icon_build_test $(wildcard visualizer.rco)
 
 profile-check:
 	mkdir -p build
