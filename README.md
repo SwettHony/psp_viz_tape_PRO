@@ -141,6 +141,11 @@ after checking that file's exact size and checksum. Only the last
 visualizer's thumbnail differs in that file. Nothing is ever written to
 flash.
 
+
+
+<img width="440" height="496" alt="Screenshot 2026-10-14 at 10 45 55 PM" src="https://github.com/user-attachments/assets/ac097019-8985-4320-aab3-720a413feb3b" />
+
+
 ## Disclaimer
 
 This software is provided **as is, without warranty of any kind**, and the
