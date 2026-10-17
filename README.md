@@ -14,7 +14,7 @@
 
 I wanted the PSP's Music player to look like a tape deck, so this plugin
 turns its last visualizer into an animated cassette: the reels turn, the tape
-winds from one reel to the other, and after 15 minutes it flips to Side B
+winds from one reel to the other, and after 15 minutes it flips to Side B.
 
 Version 1.2 enables PSP-1000, PSP-2000, PSP-3000, PSP Go and PSP Street/E1000
 on ARK-4 with matching 6.61 firmware modules. See [Tested on](#tested-on) for
@@ -46,8 +46,8 @@ also AI-assisted.)*
 
 | Your custom firmware | Download | Enable it with |
 | --- | --- | --- |
-| **ARK-4** | [Upstream release](https://github.com/beckerd/psp_viz_tape/releases/tag/v1.2) (or this fork's, both work) | `seplugins/PLUGINS.TXT` |
-| **PRO-C** (PRO / infinity) | [This fork's release](https://github.com/YOUR-USERNAME/psp_viz_tape/releases) | `seplugins/vsh.txt` |
+| **ARK-4** | [Upstream release](https://github.com/beckerd/psp_viz_tape/releases/tag/v1.2) | `seplugins/PLUGINS.TXT` |
+| **PRO-C** (infinity) | [This fork's release](https://github.com/SwettHony/psp_viz_tape_PRO/releases) | `seplugins/vsh.txt` |
 
 The upstream build is made for ARK-4. Use this fork's release on PRO.
 
@@ -116,7 +116,8 @@ embedded in `viz_tape.prx`. The old `enabled.txt` is also no longer used.
   PATCHED final brown-line slot 7; visualizer=09DD0100
   ```
 
-Other PSP models and other custom firmwares have not been tested on PRO-C.
+This fork's build has not been tested on ARK-4, and other PSP models have not been
+tested with PRO-C.
 Reports are welcome: open an issue and include your `status.txt`.
 
 ## If something goes wrong
