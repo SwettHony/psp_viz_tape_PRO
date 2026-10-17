@@ -59,7 +59,7 @@ embedded in `viz_tape.prx`. The old `enabled.txt` is also no longer used.
 
 ## Tested on
 
-- PSP-1000 (32 MB), ARK, firmware reporting 6.60 (`devkit=06060010`),
+- PSP-1000 (32 MB), 6.61 ARK-4 as shown in System Information,
   128 GB memory card, alongside xmb_gamecache.
 
 The cassette rendering features ran on that PSP with zero renderer errors in
@@ -70,9 +70,16 @@ succeeded, slot 7 was patched, and the boot guard cleared. The installed PRX
 matched the build checksum, and the generated icon passed integrity checks.
 Host sanitizer tests and the PSP binary audit also pass.
 
+The startup log's `devkit=06060010` is the plugin-facing compatibility value,
+not evidence of an installed 6.60 firmware. ARK
+[hooks the version API for plugins](https://github.com/PSP-Archive/ARK-4/blob/main/core/systemctrl/src/syspatch.c)
+and [returns the 6.60 value](https://github.com/PSP-Archive/ARK-4/blob/main/core/systemctrl/src/sctrl_hen.c)
+to support older plugins on 6.61. This retest does not establish compatibility
+with a PSP actually running 6.60.
+
 Extended playback and suspend/resume testing of this single-file build remains
-outstanding. The plugin accepts 6.60/6.61 only when its exact module and resource
-checks pass. Other models and PSP Go internal storage are **unverified**.
+outstanding. The plugin accepts 6.60/6.61 API values only when its exact module
+and resource checks pass. Other models and PSP Go internal storage are **unverified**.
 Reports (good and bad) are very welcome — please open an issue.
 
 ## If something goes wrong
@@ -100,7 +107,7 @@ Reports (good and bad) are very welcome — please open an issue.
 
 ## Known limitations
 
-- Only the matching 6.60/6.61 firmware layouts are supported; other layouts
+- Only the verified 6.61 module layouts are supported; other layouts
   leave the stock visualizer selected.
 - Only the last visualizer is replaced; the spectrum and others are untouched.
 - The tape clock restarts when the XMB restarts, and is not tied to the

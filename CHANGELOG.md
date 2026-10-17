@@ -18,10 +18,13 @@
 - Add regressions for the firmware argument order, padded buffer and cleanup,
   allocation failures, and recovery-log preservation.
 - Hardware retest passed on 2026-10-17 with `1.2-dev2` (`0494423`): PSP-1000,
-  firmware reporting 6.60, ARK and xmb_gamecache. Startup completed, the user
-  renderer started, the icon and playback-state binding succeeded, slot 7 was
-  patched, and the boot guard cleared. Host tests and the binary audit pass;
+  6.61 ARK-4 per System Information, alongside xmb_gamecache. Startup completed,
+  the user renderer started, the icon and playback-state binding succeeded,
+  slot 7 was patched, and the boot guard cleared. Host tests and the binary audit pass;
   extended playback and suspend/resume testing of this build is outstanding.
+- Correct the test record's firmware identification: ARK hooks the plugin's
+  version API to return a 6.60 compatibility value on 6.61. The raw
+  `devkit=06060010` log value does not establish a test on actual 6.60 firmware.
 
 - Validate the icon resource again before every Music-module redirect, so a
   file removed or changed over USB cannot reuse its startup validation. Keep

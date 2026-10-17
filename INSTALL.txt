@@ -1,5 +1,5 @@
 VIZ TAPE 1.2 — HOW TO INSTALL
-An animated cassette for the PSP Music player (PSP-1000, ARK, matching 6.60/6.61 firmware)
+An animated cassette for the PSP Music player (PSP-1000, 6.61 ARK-4)
 
 WHAT YOU NEED
   - Your PSP with ARK-4, and a USB cable (or a memory card reader).
@@ -57,9 +57,11 @@ IF THE CASSETTE DOESN'T SHOW UP
 
 TESTING STATUS
   Corrected build 1.2-dev2 passed a PSP-1000 restart and Music-hook retest
-  on 2026-10-17, with firmware reporting 6.60. The renderer started, the icon
-  and playback-state binding succeeded, slot 7 was patched, and the boot
-  guard cleared. Host tests and PSP build checks also pass.
+  on 2026-10-17, running 6.61 ARK-4 per System Information. The renderer
+  started, the icon and playback-state binding succeeded, slot 7 was patched,
+  and the boot guard cleared. Host tests and PSP build checks also pass.
+  ARK reports a 6.60 compatibility value to plugins, so devkit=06060010 in
+  status.txt does not identify the installed firmware as 6.60.
   Extended playback and suspend/resume testing of this build is outstanding.
 
 More details: https://github.com/beckerd/psp_viz_tape
