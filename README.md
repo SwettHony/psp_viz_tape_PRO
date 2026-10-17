@@ -1,5 +1,14 @@
 # Viz Tape — cassette visualizer for the PSP Music player
-<img width="440" height="496" alt="Screenshot 2026-10-14 at 10 45 55 PM" src="https://github.com/user-attachments/assets/ac097019-8985-4320-aab3-720a413feb3b" />
+
+> **Fork of [beckerd/psp_viz_tape](https://github.com/beckerd/psp_viz_tape) with PRO-C support.**
+> All credit for the plugin, the renderer and the artwork goes to the original author.
+> The only functional change in this fork is in `plugin.c`: the plugin now finds the
+> renderer's bridge by walking the module's export table, so it also works on custom
+> firmwares whose `sctrlHENFindFunction` does not search variable exports. Tested on a
+> PSP-1000, 6.61, **PRO-C infinity**. This change was written with the help of an AI
+> assistant (Claude) and tested on the device. It is also proposed upstream as a pull request.
+
+<img width="440" height="496" alt="Screenshot 2026-10-14 at 10 45 55 PM" src="https://github.com/user-attachments/assets/ac097019-8985-4320-aab3-720a413feb3b" />
 
 ![Viz Tape: the cassette slides in, winds and flips from Side A to Side B](docs/viz_tape.gif)
 
@@ -12,7 +21,8 @@ on ARK-4 with matching 6.61 firmware modules. See [Tested on](#tested-on) for
 the hardware results and the remaining tests.
 
 This was written by Astra and Opus5.5 if you do not want code written by AI on your PSP
-this project is not for you.
+this project is not for you. *(Original author's note; the PRO-C change in this fork was
+also AI-assisted.)*
 
 ## What it does
 
@@ -32,34 +42,51 @@ this project is not for you.
   a PSP-1000.
 - Sony keeps drawing the track title, time and controls on top.
 
+## Which build do I need?
+
+| Your custom firmware | Download | Enable it with |
+| --- | --- | --- |
+| **ARK-4** | [Upstream release](https://github.com/beckerd/psp_viz_tape/releases/tag/v1.2) (or this fork's, both work) | `seplugins/PLUGINS.TXT` |
+| **PRO-C** (PRO / infinity) | [This fork's release](https://github.com/YOUR-USERNAME/psp_viz_tape/releases) | `seplugins/vsh.txt` |
+
+The upstream build is made for ARK-4. Use this fork's release on PRO.
+
 ## Install
 
-1. Download [viz_tape-v1.2.zip](https://github.com/beckerd/psp_viz_tape/releases/download/v1.2/viz_tape-v1.2.zip)
-   from the [1.2 release](https://github.com/beckerd/psp_viz_tape/releases/tag/v1.2)
-   and unzip it.
+1. Download the ZIP for your custom firmware (see the table above) and unzip it.
 2. Connect your PSP to your computer in USB mode.
 3. Copy the `seplugins` folder from the ZIP onto the root of the memory card
    or PSP Go internal storage.
    If the card already has a `seplugins` (or `SEPLUGINS`) folder, let your
    computer merge them; nothing else in it is replaced.
-4. Open `seplugins/PLUGINS.TXT` on the card in a plain-text editor (create it
-   if it doesn't exist) and add this one line:
+4. Enable the plugin. This is the only step that differs between custom firmwares.
+
+   **ARK-4:** open `seplugins/PLUGINS.TXT` on the card in a plain-text editor
+   (create it if it doesn't exist) and add this one line:
 
    ```
    vsh, ms0:/seplugins/viz_tape/viz_tape.prx, on
    ```
 
-   **PSP Go internal storage:** use this line instead:
+   **PSP Go internal storage (ARK-4):** use this line instead:
 
    ```
    vsh, ef0:/seplugins/viz_tape/viz_tape.prx, on
+   ```
+
+   **PRO-C:** open `seplugins/vsh.txt` and add this one line. Do not use the
+   ARK `vsh, ..., on` format on PRO:
+
+   ```
+   ms0:/seplugins/viz_tape/viz_tape.prx 1
    ```
 
    Keep one Viz Tape entry. The plugin saves its icon, log and boot guard in
    `seplugins/viz_tape` on the same storage device as the installed PRX.
 
 5. Eject the card, exit USB mode and restart your PSP.
-6. Play a song in the Music player and switch to the last visualizer.
+6. Wait about 20 seconds in the XMB, play a song in the Music player and
+   switch to the last visualizer.
 
 That's it. On the first start the plugin creates the cassette icon during
 startup, ready for the first Music session. [INSTALL.txt](INSTALL.txt)
@@ -73,7 +100,24 @@ embedded in `viz_tape.prx`. The old `enabled.txt` is also no longer used.
 ## Tested on
 
 - PSP-1000 (32 MB), 6.61 ARK-4 as shown in System Information,
-  128 GB memory card, alongside xmb_gamecache.
+  128 GB memory card, alongside xmb_gamecache *(original author)*.
+- PSP-1000, 6.61 PRO-C infinity, PRO build from this fork *(this fork)*.
+  `status.txt` reached every checkpoint:
+
+  ```
+  Viz Tape 1.2 started; devkit=06060110 model=0 storage=ms0:
+  MEMORY user partition=08800000 size=01800000
+  ICON created visualizer.rco from the stock resource
+  RENDERER loading embedded runtime (size-first firmware ABI)
+  RENDERER starting embedded runtime
+  RENDERER embedded runtime started in user memory
+  ICON cassette resource selected in RAM
+  SEEK fast-forward/rewind state found
+  PATCHED final brown-line slot 7; visualizer=09DD0100
+  ```
+
+Other PSP models and other custom firmwares have not been tested on PRO-C.
+Reports are welcome: open an issue and include your `status.txt`.
 
 ## If something goes wrong
 
@@ -82,10 +126,14 @@ embedded in `viz_tape.prx`. The old `enabled.txt` is also no longer used.
   next start skips the plugin once, so a fault can never become a boot loop.
   (Launching a game or entering USB mode within 15 seconds has the same
   harmless one-start effect.)
-- To disable it, change the Viz Tape line in PLUGINS.TXT to `off` over USB,
-  or hold **START** while powering on to bypass ARK plugins for one boot, or
-  use ARK's **Recovery Menu** (hold R at power-on). See ARK's
-  [recovery guide](https://github.com/PSP-Archive/ARK-4/wiki/Recovery).
+- **To disable it:**
+  - **ARK-4:** change the Viz Tape line in `PLUGINS.TXT` to `off` over USB, or hold
+    **START** while powering on to bypass ARK plugins for one boot, or use ARK's
+    **Recovery Menu** (hold R at power-on). See ARK's
+    [recovery guide](https://github.com/PSP-Archive/ARK-4/wiki/Recovery).
+  - **PRO-C:** remove the Viz Tape line from `vsh.txt` (or change `1` to `0`) over
+    USB, or hold **R** at power-on to open PRO's **Recovery Menu** and disable it
+    under Plugins.
 - Diagnostics are written to `seplugins/viz_tape/status.txt` on the installation
   device (`ms0:` for Memory Stick or `ef0:` for PSP Go internal storage):
   `PATCHED final brown-line slot 7` means the cassette is hooked,
@@ -95,11 +143,13 @@ embedded in `viz_tape.prx`. The old `enabled.txt` is also no longer used.
   A boot-guard recovery preserves the failed startup's log and appends the
   skip reason. Renderer load/start checkpoints are flushed before each call.
   Startup also records the actual model ID, selected storage device and user
-  partition bounds. The `devkit` field may be ARK's compatibility value.
-- If the cassette doesn't appear, check the PLUGINS.TXT line and
-  `seplugins/viz_tape/viz_tape.prx`. A `RENDERER load failed` or
-  `RENDERER start failed` status means the embedded runtime could not start;
-  the stock visualizer is kept.
+  partition bounds. The `devkit` field may be a compatibility value.
+- If the cassette doesn't appear, check the plugin line (`PLUGINS.TXT` on ARK,
+  `vsh.txt` on PRO) and `seplugins/viz_tape/viz_tape.prx`. A
+  `RENDERER load failed` or `RENDERER start failed` status means the embedded
+  runtime could not start; `SKIPPED: unsupported devkit=...` means the firmware
+  version isn't the supported 6.61. In all of these cases the stock visualizer
+  is kept.
 
 ## Known limitations
 
@@ -137,10 +187,10 @@ but need private firmware captures that are not in this repository.
 
 ## How it works (short version)
 
-The kernel plugin registers an ARK module-start handler. When the Music
-player's visualizer module loads, it verifies the module's exact layout —
-sizes, the final effect's 15-entry vtable, code signatures and import stubs —
-and only then replaces that effect's one draw pointer in user RAM with the
+The kernel plugin registers a module-start handler (`sctrlHENSetStartModuleHandler`).
+When the Music player's visualizer module loads, it verifies the module's exact
+layout — sizes, the final effect's 15-entry vtable, code signatures and import
+stubs — and only then replaces that effect's one draw pointer in user RAM with the
 renderer's. It also locates the visualizer's playback-state word (play,
 pause, fast-forward, rewind) for the renderer to read.
 
@@ -155,6 +205,13 @@ The kernel queries the real user-memory partition and passes its bounds to
 the renderer; checks neither assume 32 MB nor grant access to extra RAM based
 on a model number alone. Kernel patching and user-mode drawing remain
 separate at runtime, with one file and one plugin entry to install.
+
+**What this fork changes:** the renderer shares its state with the kernel plugin
+through a data export (`tapeBridge`). The original build looked it up with
+`sctrlHENFindFunction`, which ARK-4 also uses for variable exports. This fork walks the
+renderer module's export table directly (bounds-checked against its segments) and
+only falls back to `sctrlHENFindFunction` if that finds nothing. Nothing else in the
+plugin or the renderer changed.
 
 The user-mode renderer draws the cassette in software into a fixed 480×272
 buffer, run-length-merges it into rectangles and submits them through the
@@ -173,21 +230,25 @@ checksum again on each Music-module load, including after USB mode. A missing
 or invalid file leaves the stock icon selected. Only the last visualizer's
 thumbnail differs. Nothing is ever written to flash.
 
-
-
 ## Disclaimer
 
 This software is provided **as is, without warranty of any kind**, and the
-author accepts no liability for any damage arising from its use — see
+authors accept no liability for any damage arising from its use — see
 sections 15 and 16 of the [LICENSE](LICENSE). Use it at your own risk.
 
 Just in case: an XMB freeze is recovered by holding the power switch off and
-disabling the plugin via ARK's Recovery Menu (hold R at power-on), by holding
-START at power-on, or by editing PLUGINS.TXT over USB.
+disabling the plugin (ARK's Recovery Menu or PRO's Recovery Menu, hold R at
+power-on), by holding START at power-on on ARK, or by editing `PLUGINS.TXT` /
+`vsh.txt` over USB.
 
 ## Credits & license
 
-GPL-3.0-or-later. Built with PSPSDK and ARK-4's module-start API. The RCO
+GPL-3.0-or-later. Original plugin, renderer and artwork by
+[beckerd](https://github.com/beckerd) — [upstream repository](https://github.com/beckerd/psp_viz_tape).
+PRO-C support in this fork by [YOUR-USERNAME](https://github.com/YOUR-USERNAME),
+written with the help of Claude.
+
+Built with PSPSDK and the custom firmware's module-start API. The RCO
 work used [RCOMage's format definitions](https://github.com/kakaroto/RCOMage)
 and [Jpcsp's LZR decoder](https://github.com/jpcsp/jpcsp) — thanks to both
 projects.
