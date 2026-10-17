@@ -12,8 +12,14 @@
   signatures, resource validation and the boot guard.
 - Log model, storage and memory bounds as `1.2-dev3`. Add sanitizer regressions
   across model IDs, both storage devices, low/high address relocations and
-  invalid partition data. Hardware testing of these compatibility changes is
-  pending; the earlier PSP-1000 result below applies to `1.2-dev2`.
+  invalid partition data.
+- Confirm `1.2-dev3` (`c776a51`) startup and Music-hook success from the
+  PSP-1000 device log on 2026-10-17, running 6.61 ARK-4 per the previously
+  reported System Information. Memory-partition bounds were correct, the
+  renderer started, the icon and playback-state binding succeeded, and
+  slot 7 was patched. The installed binary and icon passed integrity checks;
+  the boot guard was absent. Other models, extended playback and
+  suspend/resume still need hardware testing.
 
 - Install one `viz_tape.prx` and one PLUGINS.TXT entry. The kernel plugin
   embeds the renderer and a worker loads it into user memory; nothing is

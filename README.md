@@ -92,9 +92,16 @@ The newer `1.2-dev3` build removes the PSP-1000-only startup check, adds native
 PSP Go storage handling, and uses the actual user-memory partition for address
 validation. Host tests cover model IDs 0–10, both storage devices, normal and
 expanded user-memory ranges, and signature checks at relocated addresses.
+On 2026-10-17, the device log also confirmed successful startup and Music
+hooking for `1.2-dev3` (commit `c776a51`) on the same PSP-1000. It reported
+the expected user partition (`08800000`, size `01800000`), started the renderer,
+selected the cassette icon, bound playback state and patched slot 7. The
+installed PRX matched the build checksum, the generated icon passed integrity
+checks, and the boot guard was absent. An earlier icon-skip message was
+followed by successful selection; the log does not identify the initial cause.
 Hardware testing of this build on the PSP-2000, PSP-3000, Go and Street/E1000
-is **pending**, as is a PSP-1000 regression test and extended playback and
-suspend/resume testing. These models are enabled, rather than silently blocked
+is **pending**, along with extended playback and suspend/resume testing.
+These models are enabled, rather than silently blocked
 as they were in 1.1. The plugin accepts 6.60/6.61 API values only when its exact
 module and resource checks pass. Reports are welcome — please include
 `seplugins/viz_tape/status.txt`, your model and the System Information version.

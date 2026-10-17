@@ -73,8 +73,11 @@ TESTING STATUS
   ARK reports a 6.60 compatibility value to plugins, so devkit=06060010 in
   status.txt does not identify the installed firmware as 6.60.
   The newer 1.2-dev3 removes the model restriction and adds PSP Go storage
-  and memory-partition handling. Host tests and PSP build checks pass.
-  Hardware tests on 2000/3000/Go/Street, a new 1000 regression test, and
-  extended playback and suspend/resume tests remain outstanding.
+  and memory-partition handling. On the same date, its PSP-1000 device log
+  confirmed startup, correct memory bounds, renderer and Music-hook success.
+  The installed PRX and generated icon passed integrity checks; the boot
+  guard was absent. Host tests and PSP build checks pass.
+  Hardware tests on 2000/3000/Go/Street, plus extended playback and
+  suspend/resume tests, remain outstanding.
 
 More details: https://github.com/beckerd/psp_viz_tape
