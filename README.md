@@ -245,7 +245,7 @@ power-on), by holding START at power-on on ARK, or by editing `PLUGINS.TXT` /
 
 GPL-3.0-or-later. Original plugin, renderer and artwork by
 [beckerd](https://github.com/beckerd) — [upstream repository](https://github.com/beckerd/psp_viz_tape).
-PRO-C support in this fork by [YOUR-USERNAME](https://github.com/YOUR-USERNAME),
+PRO-C support in this fork by [SwettHony](https://github.com/SwettHony),
 written with the help of Claude.
 
 Built with PSPSDK and the custom firmware's module-start API. The RCO
