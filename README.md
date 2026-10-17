@@ -6,7 +6,7 @@
 > renderer's bridge by walking the module's export table, so it also works on custom
 > firmwares whose `sctrlHENFindFunction` does not search variable exports. Tested on a
 > PSP-1000, 6.61, **PRO-C infinity**. This change was written with the help of an AI
-> assistant (Claude) and tested on the device. It is also proposed upstream as a pull request.
+> assistant (Claude) and tested on the device. It is also reported upstream: https://github.com/beckerd/psp_viz_tape/issues/1
 
 <img width="440" height="496" alt="Screenshot 2026-10-14 at 10 45 55 PM" src="https://github.com/user-attachments/assets/ac097019-8985-4320-aab3-720a413feb3b" />
 
