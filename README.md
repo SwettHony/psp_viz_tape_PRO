@@ -14,7 +14,7 @@
 
 I wanted the PSP's Music player to look like a tape deck, so this plugin
 turns its last visualizer into an animated cassette: the reels turn, the tape
-winds from one reel to the other, and after 15 minutes it flips to Side B.
+winds from one reel to the other, and after 15 minutes it flips to Side B
 
 Version 1.2 enables PSP-1000, PSP-2000, PSP-3000, PSP Go and PSP Street/E1000
 on ARK-4 with matching 6.61 firmware modules. See [Tested on](#tested-on) for
