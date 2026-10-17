@@ -2,7 +2,7 @@
 #define VIZ_TAPE_ICON_H
 #include <stddef.h>
 #include <stdint.h>
-#define TAPE_ICON_PATH "ms0:/seplugins/viz_tape/visualizer.rco"
+#include "paths.h"
 #define TAPE_MUSIC_TEXT_SIZE 0x42b80u
 #define TAPE_MUSIC_ICON_PATH 0x3fea4u
 #define TAPE_MUSIC_DATA_SIZE 0x9ccu

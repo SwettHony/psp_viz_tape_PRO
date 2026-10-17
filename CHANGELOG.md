@@ -1,5 +1,63 @@
 # Changelog
 
+## 1.2 — 2026-10-17
+
+- Enable all retail PSP models: 1000, 2000, 3000, Go and Street/E1000. Version
+  1.1's startup check silently rejected every model except the 1000.
+- Select ms0: or ef0: from the installed plugin path for logs, the boot guard,
+  storage sync and the cassette resource, including its RAM redirect.
+- Query the actual user-memory partition and share its bounds with the
+  renderer. Validate relocated modules in expanded user RAM without widening
+  checks on devices where that RAM is unavailable. Retain exact firmware
+  signatures, resource validation and the boot guard.
+- Log model, storage and memory bounds. Add sanitizer regressions
+  across model IDs, both storage devices, low/high address relocations and
+  invalid partition data.
+- Confirm `1.2-dev3` (`c776a51`) startup and Music-hook success from the
+  PSP-1000 device log on 2026-10-17, running 6.61 ARK-4 per the previously
+  reported System Information. Memory-partition bounds were correct, the
+  renderer started, the icon and playback-state binding succeeded, and
+  slot 7 was patched. The installed binary and icon passed integrity checks;
+  the boot guard was absent. Other models, extended playback and
+  suspend/resume still need hardware testing.
+- Finalize the diagnostic version label as `1.2`; runtime behavior is
+  unchanged from the hardware-tested `1.2-dev3` build.
+
+- Install one `viz_tape.prx` and one PLUGINS.TXT entry. The kernel plugin
+  embeds the renderer and a worker loads it into user memory; nothing is
+  extracted to the card. The renderer keeps its user-mode drawing context.
+- Handle renderer load/start failures without changing the native draw
+  pointer, and revisit a visualizer that loads before the renderer is ready.
+- Verify the embedded runtime bytes and 64-byte buffer alignment during the
+  binary audit. The release ZIP and install checksums include only one PRX.
+- Correct the initial single-file build's startup failure: the 6.60/6.61
+  firmware import expects size before buffer, despite the SDK declaration.
+  Use a temporary zero-padded user buffer covering the full loaded image,
+  since the plain-PRX loader can copy beyond the file length through BSS.
+- Preserve the failed startup log when the boot guard skips activation, and
+  flush renderer load/start checkpoints. Corrected logs identify `1.2-dev2`.
+- Add regressions for the firmware argument order, padded buffer and cleanup,
+  allocation failures, and recovery-log preservation.
+- Hardware retest passed on 2026-10-17 with `1.2-dev2` (`0494423`): PSP-1000,
+  6.61 ARK-4 per System Information, alongside xmb_gamecache. Startup completed,
+  the user renderer started, the icon and playback-state binding succeeded,
+  slot 7 was patched, and the boot guard cleared. Host tests and the binary audit pass;
+  extended playback and suspend/resume testing of this build is outstanding.
+- Correct the test record's firmware identification: ARK hooks the plugin's
+  version API to return a 6.60 compatibility value on 6.61. The raw
+  `devkit=06060010` log value does not establish a test on actual 6.60 firmware.
+
+- Validate the icon resource again before every Music-module redirect, so a
+  file removed or changed over USB cannot reuse its startup validation. Keep
+  the stock icon when validation fails or USB storage is active.
+- Build the first-install icon during startup, before registering hooks, so
+  opening Music immediately no longer misses the cassette icon.
+- Skip activation if the status thread cannot be created or started. Hooks
+  are registered only after that succeeds, keeping active hooks protected by
+  the boot guard during startup.
+- Add sanitizer-backed lifecycle tests for first launch, storage changes,
+  reporter exit, USB state changes, thread failures and handler chaining.
+
 ## 1.1 — the icon makes itself; simpler install
 
 - **No more icon step.** The kernel plugin now creates the cassette icon on

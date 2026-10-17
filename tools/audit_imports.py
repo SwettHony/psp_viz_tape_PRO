@@ -3,6 +3,8 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import struct
+from renderer_buffer import required_size
 
 allowed_kernel = set('''sctrlHENFindFunction sctrlHENSetStartModuleHandler
 sceKernelFindModuleByName sceKernelFindModuleByUID
@@ -10,7 +12,10 @@ sceIoClose sceIoOpen sceIoRead sceIoWrite sceIoRemove sceIoSync sceIoGetstat
 sceKernelDcacheWritebackAll sceKernelCpuSuspendIntr sceKernelCpuResumeIntr
 sceKernelDelayThread sceKernelCreateThread sceKernelDeleteThread
 sceKernelStartThread sceKernelExitDeleteThread strcmp strlen memcmp snprintf
+sceKernelLoadModuleBuffer sceKernelStartModule sceKernelUnloadModule
+sceKernelAllocPartitionMemory sceKernelGetBlockHeadAddr sceKernelFreePartitionMemory memcpy memset
 sceKernelDevkitVersion sceKernelGetModel sceKernelInitKeyConfig sceKernelApplicationType
+sceKernelQueryMemoryPartitionInfo
 sceUsbGetState'''.split())
 allowed_render = {'sceKernelGetSystemTimeLow', 'sceKernelDcacheWritebackRange'}
 lines = []
@@ -33,4 +38,17 @@ for name, allowed in [('viz_tape', allowed_kernel), ('viz_tape_render', allowed_
         if forbidden in payload:
             sys.exit('Unexpected persistent-firmware reference in '+name)
 Path('build/import-audit.txt').write_text('\n'.join(lines)+'\n')
-print('Binary import audit passed: renderer has only clock/cache imports; kernel imports match reviewed list.')
+# Audit the exact runtime bytes shipped inside the single installable PRX.
+renderer = Path('viz_tape_render.prx').read_bytes()
+if Path('viz_tape.prx').read_bytes().count(renderer) != 1:
+    sys.exit('Kernel PRX must embed exactly one copy of the audited renderer')
+symbols = subprocess.check_output(['psp-nm', '--defined-only', 'viz_tape.elf'], text=True)
+address = re.search(r'^(\w+) \w tape_renderer_prx$', symbols, re.M)
+if not address or int(address[1], 16) % 64:
+    sys.exit('Embedded renderer buffer is not 64-byte aligned')
+# The two size words follow the exact embedded payload, rounded to a word.
+kernel = Path('viz_tape.prx').read_bytes()
+sizes_at = kernel.index(renderer) + ((len(renderer) + 3) & ~3)
+if struct.unpack_from('<II', kernel, sizes_at) != (len(renderer), required_size(renderer)):
+    sys.exit('Embedded renderer size or staging buffer extent is incorrect')
+print('Binary audit passed: reviewed imports, exact embedded renderer, alignment and full-image staging size.')

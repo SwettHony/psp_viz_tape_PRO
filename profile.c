@@ -1,4 +1,5 @@
 #include "profile.h"
+#include "safety.h"
 
 /* Relocation-independent checks from a stock 6.61 visualizer capture.
  * These are a small code signature and the final brown-line effect's complete vtable layout. */
@@ -19,7 +20,7 @@ int tape_profile_matches(const void *text, size_t size, uint32_t base)
     const uint32_t *words = text;
     unsigned i;
     if (!text || (uintptr_t)text % 4 || size != TAPE_TEXT_SIZE ||
-        base < 0x08800000 || base > 0x0a000000 - TAPE_TEXT_SIZE) return 0;
+        !tape_user_range(base, TAPE_TEXT_SIZE)) return 0;
     for (i = 0; i < sizeof slots / sizeof slots[0]; ++i)
         if (words[TAPE_VTABLE/4+i] != base + slots[i]) return 0;
     for (i = 0; i < sizeof prefix / sizeof prefix[0]; ++i)
@@ -39,7 +40,7 @@ uint32_t tape_play_state_address(const void *text, size_t size, uint32_t base)
     uint32_t state = base + TAPE_PLAY_STATE;
     uint32_t hi = (state + 0x8000u) >> 16, lo = state & 0xffffu;
     if (!text || (uintptr_t)text % 4 || size != TAPE_TEXT_SIZE ||
-        base < 0x08800000 || base > 0x0a000000 - TAPE_TEXT_SIZE) return 0;
+        !tape_user_range(base, TAPE_TEXT_SIZE)) return 0;
     if (words[TAPE_STATE_GETTER/4] != (0x3c030000u | hi) ||
         words[TAPE_STATE_GETTER/4+1] != 0x03e00008u ||
         words[TAPE_STATE_GETTER/4+2] != (0x8c620000u | lo)) return 0;

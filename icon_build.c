@@ -3,8 +3,8 @@
 #include "icon_resource.h"
 #include "icon_patch.h"
 
-/* Runs once, from the plugin's status thread, when no valid icon resource is
- * on the card. The stock file is only ever opened read-only. */
+/* Runs during plugin startup, before hooks are installed, when no valid icon
+ * resource is on the card. The stock file is only ever opened read-only. */
 typedef struct {
     SceUID source, output;
     uint32_t position, total, hash;

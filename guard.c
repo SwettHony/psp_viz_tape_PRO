@@ -13,7 +13,7 @@ int tape_guard_begin(void)
     int found = sceIoGetstat(TAPE_GUARD_PATH, &st);
     if (found >= 0) {
         sceIoRemove(TAPE_GUARD_PATH);
-        sceIoSync("ms0:", 0);
+        sceIoSync(tape_paths.device, 0);
         return 0;
     }
     if ((unsigned)found != 0x80010002u) return 0;
@@ -22,11 +22,11 @@ int tape_guard_begin(void)
     written = sceIoWrite(fd, TAPE_GUARD_TEXT, sizeof(TAPE_GUARD_TEXT)-1);
     closed = sceIoClose(fd);
     return written == sizeof(TAPE_GUARD_TEXT)-1 && closed >= 0 &&
-           sceIoSync("ms0:", 0) >= 0;
+           sceIoSync(tape_paths.device, 0) >= 0;
 }
 
 /* Called once startup has run cleanly; the next start hooks normally. */
 int tape_guard_finish(void)
 {
-    return sceIoRemove(TAPE_GUARD_PATH) >= 0 && sceIoSync("ms0:", 0) >= 0;
+    return sceIoRemove(TAPE_GUARD_PATH) >= 0 && sceIoSync(tape_paths.device, 0) >= 0;
 }

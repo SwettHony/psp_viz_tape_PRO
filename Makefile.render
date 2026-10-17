@@ -12,7 +12,7 @@ include $(PSPSDK)/lib/build.mak
 
 render_plugin.o: runtime.h tape.h mesh.h frame.h safety.h
 frame.o: frame.h tape.h mesh.h
-safety.o: safety.h
+safety.o: safety.h paths.h
 mesh.o: mesh.h
 tape.o: tape.h
 animation.o: tape.h

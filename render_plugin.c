@@ -7,7 +7,7 @@
 #include "safety.h"
 
 #ifndef TAPE_PREVIEW
-PSP_MODULE_INFO("viz_tape_render", PSP_MODULE_USER, 1, 1);
+PSP_MODULE_INFO(TAPE_RENDERER_MODULE, PSP_MODULE_USER, 1, 2);
 PSP_NO_CREATE_MAIN_THREAD();
 PSP_HEAP_SIZE_KB(0);
 #endif
@@ -48,6 +48,7 @@ void tapeDraw(void *effect, const uint32_t *audio)
     if (tapeBridge.ready != TAPE_READY) return;
     api = tapeBridge.api;
     if (api.abi != TAPE_ABI || !api.draw || !api.enable || !api.disable || !api.blend ||
+        !tape_set_user_memory(api.user_base, api.user_size) ||
         !tape_user_range((uintptr_t)effect, 0x28) ||
         !tape_user_range((uintptr_t)audio, 16)) { ++status.errors; return; }
     now = sceKernelGetSystemTimeLow();

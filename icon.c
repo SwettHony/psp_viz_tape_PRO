@@ -2,8 +2,10 @@
 #include <string.h>
 #include "icon.h"
 #include "icon_resource.h"
+#include "safety.h"
 
-/* Read-only preflight at plugin startup, never inside a module/draw callback.
+/* Read-only preflight at startup and before each Music-module redirect.
+ * Runs with interrupts enabled, never inside a draw callback.
  * Manual copies can be verified with SHA256SUMS; this check catches missing,
  * partial, stale or accidentally damaged copies before changing a RAM path. */
 int tape_icon_resource_ready(void)
@@ -35,7 +37,8 @@ int tape_icon_redirect(void *text, size_t size, uint32_t base)
 {
     const char *original = tape_stock_icon_path;
     const size_t original_size = sizeof tape_stock_icon_path;
-    static const char replacement[] = TAPE_ICON_PATH;
+    const char *replacement = TAPE_ICON_PATH;
+    const size_t replacement_size = sizeof tape_paths.icon;
     static const uint32_t prefix[] = {
         0x27bdff70, 0xafb3007c, 0x00809821, 0x03a02021,
         0xafbf0080, 0xafb20078, 0x27b2000c, 0xafb10074
@@ -45,7 +48,7 @@ int tape_icon_redirect(void *text, size_t size, uint32_t base)
     unsigned i;
     unsigned char *bytes = text;
     if (!text || (uintptr_t)text%4 || size != TAPE_MUSIC_TEXT_SIZE ||
-        base < 0x08800000 || base > 0x0a000000-TAPE_MUSIC_TEXT_SIZE) return 0;
+        !tape_user_range(base, TAPE_MUSIC_TEXT_SIZE) || replacement_size > original_size) return 0;
     path = base+TAPE_MUSIC_ICON_PATH;
     for (i = 0; i < sizeof prefix/sizeof prefix[0]; ++i)
         if (words[TAPE_MUSIC_LOADER/4+i] != prefix[i]) return 0;
@@ -58,6 +61,6 @@ int tape_icon_redirect(void *text, size_t size, uint32_t base)
         words[TAPE_MUSIC_EPILOGUE/4] != 0x03e00008u || words[TAPE_MUSIC_EPILOGUE/4+1] != 0x27bd0090u ||
         memcmp(bytes+TAPE_MUSIC_ICON_PATH, original, original_size)) return 0;
     for (i = 0; i < original_size; ++i)
-        bytes[TAPE_MUSIC_ICON_PATH+i] = i < sizeof replacement ? replacement[i] : 0;
+        bytes[TAPE_MUSIC_ICON_PATH+i] = i < replacement_size ? replacement[i] : 0;
     return 1;
 }
