@@ -1,5 +1,5 @@
 TARGET = viz_tape
-OBJS = plugin.o profile.o safety.o guard.o icon.o icon_build.o renderer_payload.o
+OBJS = plugin.o profile.o safety.o guard.o icon.o icon_build.o renderer_payload.o paths.o
 BUILD_PRX = 1
 PRX_EXPORTS = exports.exp
 USE_KERNEL_LIBC = 1
@@ -12,7 +12,7 @@ LIBS = -lpspsystemctrl_kernel -lpspusb_driver
 PSPSDK = $(shell psp-config --pspsdk-path)
 include $(PSPSDK)/lib/build.mak
 
-plugin.o: runtime.h profile.h safety.h icon.h renderer_payload.h module_loader.h
+plugin.o: runtime.h profile.h safety.h icon.h renderer_payload.h module_loader.h paths.h
 renderer_payload.o: renderer_payload.S viz_tape_render.prx build/renderer_buffer.h
 	$(CC) $(CFLAGS) -c renderer_payload.S -o $@
 
@@ -23,8 +23,9 @@ build/renderer_buffer.h: viz_tape_render.prx tools/renderer_buffer.py
 # The top-level make builds the renderer first; also support a fresh direct build.
 viz_tape_render.prx:
 	$(MAKE) -f Makefile.render
-icon.o: icon.h icon_resource.h
-icon_build.o: icon.h icon_resource.h icon_patch.h
-safety.o: safety.h
-guard.o: safety.h
-profile.o: profile.h
+icon.o: icon.h icon_resource.h safety.h paths.h
+icon_build.o: icon.h icon_resource.h icon_patch.h paths.h
+safety.o: safety.h paths.h
+guard.o: safety.h paths.h
+profile.o: profile.h safety.h
+paths.o: paths.h

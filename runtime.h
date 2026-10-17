@@ -2,8 +2,8 @@
 #define VIZ_TAPE_RUNTIME_H
 #include <stdint.h>
 
-#define TAPE_ABI 0x54415004u
-#define TAPE_READY 0x52554e04u
+#define TAPE_ABI 0x54415005u
+#define TAPE_READY 0x52554e05u
 /* Private runtime loaded from the kernel plugin's embedded PRX. These names
  * differ from the old separately installed renderer to avoid binding to it. */
 #define TAPE_RENDERER_MODULE "viz_tape_runtime"
@@ -16,6 +16,7 @@ typedef void (*TapeStateFunction)(int);
 typedef void (*TapeBlendFunction)(int, int, int, unsigned, unsigned);
 typedef struct {
     uint32_t abi;
+    uint32_t user_base, user_size;
     TapeDrawArray draw;
     TapeStateFunction enable, disable;
     TapeBlendFunction blend;

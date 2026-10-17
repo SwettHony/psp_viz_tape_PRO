@@ -7,12 +7,14 @@
 /* Simulated card: the guard file plus injectable failures. */
 static int exists, failure, open_files;
 static char contents[64];
+static const char *expected_device;
 enum { STAT_ERROR = 1, OPEN_FAIL, SHORT_WRITE, CLOSE_FAIL, SYNC_FAIL, REMOVE_FAIL };
 
 int sceIoGetstat(const char *path, SceIoStat *st)
 {
     (void)st;
     assert(!strcmp(path, TAPE_GUARD_PATH));
+    assert(!strncmp(path, expected_device, 4));
     if (failure == STAT_ERROR) return -1; /* Unknown device error is not absence. */
     return exists ? 0 : (int)0x80010002u;
 }
@@ -40,12 +42,12 @@ int sceIoRemove(const char *path)
 }
 int sceIoSync(const char *path, unsigned flags)
 {
-    assert(!strcmp(path, "ms0:") && flags == 0);
+    assert(!strcmp(path, expected_device) && flags == 0);
     return failure == SYNC_FAIL ? -1 : 0;
 }
 int sceIoRead(SceUID fd, void *out, unsigned size) { (void)fd; (void)out; (void)size; assert(0); return -1; }
 
-int main(void)
+static void check_guard(void)
 {
     int start;
     /* Clean start: the guard is written, then cleared after a healthy run. */
@@ -70,6 +72,16 @@ int main(void)
     assert(tape_guard_finish() == 0);
     failure = SYNC_FAIL; exists = 1;
     assert(tape_guard_finish() == 0);
-    puts("Boot guard: clean starts clear it; a faulted start skips only the next start; write failures skip hooks.");
+}
+
+int main(void)
+{
+    const char *path = "ms0:/seplugins/viz_tape/viz_tape.prx";
+    expected_device = "ms0:";
+    assert(tape_paths_init(path, strlen(path)+1)); check_guard();
+    path = "ef0:/seplugins/viz_tape/viz_tape.prx";
+    expected_device = "ef0:";
+    assert(tape_paths_init(path, strlen(path)+1)); check_guard();
+    puts("Boot guard: Memory Stick/Go sync, recovery skip, clean starts and I/O failures passed.");
     return 0;
 }

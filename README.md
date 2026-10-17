@@ -6,8 +6,9 @@ I wanted the PSP's Music player to look like a tape deck, so this plugin
 turns its last visualizer into an animated cassette: the reels turn, the tape
 winds from one reel to the other, and after 15 minutes it flips to Side B.
 
-The corrected single-file version starts successfully on my PSP-1000 with
-ARK-4 and hooks the Music player. See [Tested on](#tested-on) for details.
+Version 1.2 enables PSP-1000, PSP-2000, PSP-3000, PSP Go and PSP Street/E1000
+on ARK-4 with matching 6.61 firmware modules. See [Tested on](#tested-on) for
+the hardware results and the remaining tests.
 
 This was written by Astra and Opus5.5 if you do not want code written by AI on your PSP
 this project is not for you.
@@ -35,7 +36,8 @@ this project is not for you.
 1. Unzip `viz_tape-v1.2.zip`. This version is not published yet; build the ZIP
    with `make release` as described below.
 2. Connect your PSP to your computer in USB mode.
-3. Copy the `seplugins` folder from the ZIP onto the root of the memory card.
+3. Copy the `seplugins` folder from the ZIP onto the root of the memory card
+   or PSP Go internal storage.
    If the card already has a `seplugins` (or `SEPLUGINS`) folder, let your
    computer merge them; nothing else in it is replaced.
 4. Open `seplugins/PLUGINS.TXT` on the card in a plain-text editor (create it
@@ -44,6 +46,15 @@ this project is not for you.
    ```
    vsh, ms0:/seplugins/viz_tape/viz_tape.prx, on
    ```
+
+   **PSP Go internal storage:** use this line instead:
+
+   ```
+   vsh, ef0:/seplugins/viz_tape/viz_tape.prx, on
+   ```
+
+   Keep one Viz Tape entry. The plugin saves its icon, log and boot guard in
+   `seplugins/viz_tape` on the same storage device as the installed PRX.
 
 5. Eject the card, exit USB mode and restart your PSP.
 6. Play a song in the Music player and switch to the last visualizer.
@@ -77,10 +88,16 @@ and [returns the 6.60 value](https://github.com/PSP-Archive/ARK-4/blob/main/core
 to support older plugins on 6.61. This retest does not establish compatibility
 with a PSP actually running 6.60.
 
-Extended playback and suspend/resume testing of this single-file build remains
-outstanding. The plugin accepts 6.60/6.61 API values only when its exact module
-and resource checks pass. Other models and PSP Go internal storage are **unverified**.
-Reports (good and bad) are very welcome — please open an issue.
+The newer `1.2-dev3` build removes the PSP-1000-only startup check, adds native
+PSP Go storage handling, and uses the actual user-memory partition for address
+validation. Host tests cover model IDs 0–10, both storage devices, normal and
+expanded user-memory ranges, and signature checks at relocated addresses.
+Hardware testing of this build on the PSP-2000, PSP-3000, Go and Street/E1000
+is **pending**, as is a PSP-1000 regression test and extended playback and
+suspend/resume testing. These models are enabled, rather than silently blocked
+as they were in 1.1. The plugin accepts 6.60/6.61 API values only when its exact
+module and resource checks pass. Reports are welcome — please include
+`seplugins/viz_tape/status.txt`, your model and the System Information version.
 
 ## If something goes wrong
 
@@ -93,13 +110,16 @@ Reports (good and bad) are very welcome — please open an issue.
   or hold **START** while powering on to bypass ARK plugins for one boot, or
   use ARK's **Recovery Menu** (hold R at power-on). See ARK's
   [recovery guide](https://github.com/PSP-Archive/ARK-4/wiki/Recovery).
-- Diagnostics are written to `ms0:/seplugins/viz_tape/status.txt`:
+- Diagnostics are written to `seplugins/viz_tape/status.txt` on the installation
+  device (`ms0:` for Memory Stick or `ef0:` for PSP Go internal storage):
   `PATCHED final brown-line slot 7` means the cassette is hooked,
   `ICON created visualizer.rco from the stock resource` means the icon was
   made, `ICON cassette resource selected in RAM` means it is in use, and
   `SEEK fast-forward/rewind state found` means seeking is detected.
   A boot-guard recovery preserves the failed startup's log and appends the
   skip reason. Renderer load/start checkpoints are flushed before each call.
+  Startup also records the actual model ID, selected storage device and user
+  partition bounds. The `devkit` field may be ARK's compatibility value.
 - If the cassette doesn't appear, check the PLUGINS.TXT line and
   `seplugins/viz_tape/viz_tape.prx`. A `RENDERER load failed` or
   `RENDERER start failed` status means the embedded runtime could not start;
@@ -133,7 +153,8 @@ Only `viz_tape.prx` is installed. `viz_tape_render.prx` is a build intermediate.
 `make release` builds the ZIP with the single installable PRX.
 
 `make host-check` runs the host tests (rendering, animation, mesh, frame cache,
-address checks, embedded runtime loading, startup and USB lifecycle, boot
+normal/expanded address checks, model-independent startup, both storage paths,
+relocated firmware signatures, embedded runtime loading, USB lifecycle, boot
 guard and the on-PSP icon builder) under AddressSanitizer and UndefinedBehaviorSanitizer.
 `make profile-check` and `make icon-check` also verify the firmware signatures,
 but need private firmware captures that are not in this repository.
@@ -154,7 +175,9 @@ patches that already-loaded visualizer after the renderer starts. No renderer
 file is extracted to the card. Loading uses the size-first 6.60/6.61 firmware
 ABI and a temporary zero-padded user buffer covering the renderer's full
 memory image, including BSS. That buffer is freed after loading.
-Kernel patching and user-mode drawing remain
+The kernel queries the real user-memory partition and passes its bounds to
+the renderer; checks neither assume 32 MB nor grant access to extra RAM based
+on a model number alone. Kernel patching and user-mode drawing remain
 separate at runtime, with one file and one plugin entry to install.
 
 The user-mode renderer draws the cassette in software into a fixed 480×272
@@ -167,7 +190,8 @@ For the icon, the plugin carries a small patch: the new cassette image and
 the resource header that references it. On first start it reads the PSP's
 own `flash0:/vsh/resource/visualizer_plugin.rco` (read-only), checks that
 applying the patch gives exactly the expected result, and only then writes
-`ms0:/seplugins/viz_tape/visualizer.rco`. A second guarded change then points
+`seplugins/viz_tape/visualizer.rco` on the installation device (`ms0:` or `ef0:`).
+A second guarded change then points
 the Music player at that file (in RAM) after checking its exact size and
 checksum again on each Music-module load, including after USB mode. A missing
 or invalid file leaves the stock icon selected. Only the last visualizer's

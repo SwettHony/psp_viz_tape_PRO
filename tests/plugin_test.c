@@ -9,6 +9,9 @@ static int usb, marker, resource_valid, build_result, guard_result;
 static int create_result, start_result, started, deleted, registered;
 static int interrupts, redirects, checks, builds, delays, exits, chained;
 static int usb_after_check, usb_on_delay, usb_on_start_failure;
+static int model, keyconfig, memory_result;
+static unsigned devkit, memory_base, memory_size, memory_attr;
+static const char *expected_device = "ms0:";
 static int (*status_entry)(SceSize, void *);
 static STMOD_HANDLER installed;
 static char messages[4096];
@@ -48,9 +51,18 @@ int sceKernelDelayThread(unsigned us)
     return 0;
 }
 int sceKernelExitDeleteThread(int result) { assert(result == 0); ++exits; return 0; }
-int sceKernelInitKeyConfig(void) { return PSP_INIT_KEYCONFIG_VSH; }
-int sceKernelGetModel(void) { return 0; }
-unsigned sceKernelDevkitVersion(void) { return 0x06060110; }
+int sceKernelInitKeyConfig(void) { return keyconfig; }
+int sceKernelGetModel(void) { return model; }
+unsigned sceKernelDevkitVersion(void) { return devkit; }
+int sceKernelQueryMemoryPartitionInfo(int partition, PspSysmemPartitionInfo *info)
+{
+    assert(partition == PSP_MEMORY_PARTITION_USER && info->size == sizeof *info);
+    assert(!registered && !interrupts);
+    info->startaddr = memory_base;
+    info->memsize = memory_size;
+    info->attr = memory_attr;
+    return memory_result;
+}
 SceUID sceKernelCreateThread(const char *name, int (*entry)(SceSize, void *),
                              int priority, int stack, int attr, void *options)
 {
@@ -146,7 +158,8 @@ STMOD_HANDLER sctrlHENSetStartModuleHandler(STMOD_HANDLER handler)
 }
 SceUID sceIoOpen(const char *path, int flags, int mode)
 {
-    assert(!interrupts && !usb && !strcmp(path, log_path) && mode == 0777);
+    assert(!interrupts && !usb && !strcmp(path, TAPE_LOG_PATH) && mode == 0777);
+    assert(!strncmp(path, expected_device, 4));
     assert(flags == (PSP_O_WRONLY|PSP_O_CREAT|PSP_O_TRUNC) ||
            flags == (PSP_O_WRONLY|PSP_O_CREAT|PSP_O_APPEND));
     if (flags & PSP_O_TRUNC) {
@@ -159,7 +172,7 @@ SceUID sceIoOpen(const char *path, int flags, int mode)
 int sceIoClose(SceUID fd) { assert(fd == 3); return 0; }
 int sceIoSync(const char *device, unsigned flags)
 {
-    assert(!strcmp(device, "ms0:") && !flags && !interrupts && !usb);
+    assert(!strcmp(device, expected_device) && !flags && !interrupts && !usb);
     ++log_syncs;
     return 0;
 }
@@ -171,11 +184,17 @@ int sceIoWrite(SceUID fd, const void *data, unsigned size)
     messages[message_size] = 0;
     return (int)size;
 }
-int tape_guard_begin(void) { if (guard_result) marker = 1; return guard_result; }
+int tape_guard_begin(void)
+{
+    assert(!strncmp(TAPE_GUARD_PATH, expected_device, 4));
+    if (guard_result) marker = 1;
+    return guard_result;
+}
 int tape_guard_finish(void) { assert(!usb && !interrupts); marker = 0; return 1; }
 int tape_icon_resource_ready(void)
 {
     assert(!interrupts && !usb);
+    assert(!strncmp(TAPE_ICON_PATH, expected_device, 4));
     ++checks;
     if (usb_after_check) usb = PSP_USB_ACTIVATED;
     return resource_valid;
@@ -218,6 +237,12 @@ static void reset(void)
     load_result = module_start_result = 12;
     allocation_result = 20;
     allocation_calls = frees = buffer_unavailable = 0;
+    model = memory_result = 0;
+    keyconfig = PSP_INIT_KEYCONFIG_VSH; devkit = 0x06060110;
+    memory_base = 0x08800000; memory_size = 0x01800000; memory_attr = 15;
+    expected_device = "ms0:";
+    assert(tape_paths_init(0, 0));
+    assert(tape_set_user_memory(memory_base, memory_size));
 }
 
 static void run_worker(void)
@@ -230,6 +255,50 @@ static void run_worker(void)
 int main(void)
 {
     unsigned i;
+    /* Model is diagnostic, never an activation gate. Exercise every retail
+     * model value and both the real and ARK-compatibility version values. */
+    for (i = 0; i <= 10; ++i) {
+        char expected_model[32];
+        const char *installed_path = i == 4 ? "ef0:/seplugins/viz_tape/viz_tape.prx" :
+                                              "ms0:/seplugins/viz_tape/viz_tape.prx";
+        reset(); model = (int)i;
+        devkit = i & 1 ? 0x06060110 : 0x06060010;
+        if (i) memory_size = 0x03800000; /* Expanded user partition. */
+        if (i == 4) expected_device = "ef0:";
+        assert(module_start(strlen(installed_path)+1, (void *)installed_path) == 0);
+        snprintf(expected_model, sizeof expected_model, "model=%u storage=", i);
+        assert(strstr(messages, expected_model));
+        assert(tape_user_range(0x0bfffffc, 4) == (i != 0));
+        assert(installed(&music) == 17 && redirects == 1);
+        run_worker();
+        assert(renderer_started && !marker && !guarded && registered == 1);
+    }
+    /* Go may also install from Memory Stick with the normal 24 MB user
+     * partition. Model alone must never grant access to unmapped extra RAM. */
+    reset(); model = 4;
+    assert(module_start(0, 0) == 0 && !tape_user_range(0x0a000000, 4));
+    run_worker(); assert(renderer_started);
+
+    for (i = 0; i < 4; ++i) {
+        reset();
+        if (i == 0) memory_result = -1;
+        if (i == 1) memory_base = 0x88000000;
+        if (i == 2) memory_size = 0xffffffff;
+        if (i == 3) memory_attr = 0;
+        assert(module_start(0, 0) == 1 && !registered && !started && !marker && !guarded);
+        assert(strstr(messages, "user memory partition unavailable or invalid"));
+    }
+    reset(); keyconfig = 1;
+    assert(module_start(0, 0) == 1 && !registered && !message_size);
+    reset(); devkit = 0x05050010;
+    assert(module_start(0, 0) == 1 && !registered && !marker);
+    assert(strstr(messages, "unsupported devkit=05050010 model=0"));
+    reset();
+    assert(module_start(7, "flash0:") == 1 && !registered && !message_size);
+    reset(); usb = PSP_USB_ACTIVATED;
+    assert(module_start(0, 0) == 1 && !registered && !message_size);
+    reset(); usb = -1;
+    assert(module_start(0, 0) == 1 && !registered && !message_size);
     /* The very first Music load after startup sees the newly built icon,
      * without running the reporter or waiting five seconds. */
     reset();

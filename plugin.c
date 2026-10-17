@@ -16,7 +16,7 @@
 #include "module_loader.h"
 
 PSP_MODULE_INFO("viz_tape", PSP_MODULE_KERNEL, 1, 2);
-#define VIZ_TAPE_VERSION "1.2-dev2"
+#define VIZ_TAPE_VERSION "1.2-dev3"
 PSP_NO_CREATE_MAIN_THREAD();
 
 static STMOD_HANDLER previous_handler;
@@ -34,7 +34,7 @@ static const char *const icon_events[] = {
 static const char *const seek_events[] = {
     "", "SEEK fast-forward/rewind state found", "SEEK skipped: playback state layout mismatch"
 };
-static const char log_path[] = "ms0:/seplugins/viz_tape/status.txt";
+static PspSysmemPartitionInfo user_partition;
 static const char *const events[] = {
     "waiting for visualizer", "PATCHED final brown-line slot 7",
     "SKIPPED: firmware layout mismatch", "SKIPPED: renderer export/ABI mismatch",
@@ -54,7 +54,7 @@ static int usb_active(void)
 static void log_message(const char *message)
 {
     if (usb_active()) return;
-    SceUID fd = sceIoOpen(log_path, PSP_O_WRONLY|PSP_O_CREAT|PSP_O_APPEND, 0777);
+    SceUID fd = sceIoOpen(TAPE_LOG_PATH, PSP_O_WRONLY|PSP_O_CREAT|PSP_O_APPEND, 0777);
     if (fd >= 0) { sceIoWrite(fd, message, strlen(message)); sceIoClose(fd); }
 }
 #define report(...) do { char msg[256]; snprintf(msg, sizeof msg, __VA_ARGS__); log_message(msg); } while (0)
@@ -63,7 +63,7 @@ static void log_message(const char *message)
 static void checkpoint(const char *message)
 {
     log_message(message);
-    if (!usb_active()) sceIoSync("ms0:", 0);
+    if (!usb_active()) sceIoSync(tape_paths.device, 0);
 }
 
 static int module_contains(SceModule *m, uintptr_t p, size_t size)
@@ -115,6 +115,8 @@ static void patch_visualizer(SceModule *module)
     if (bridge->abi != TAPE_ABI || bridge->size != sizeof(TapeBridge) ||
         bridge->status.abi != TAPE_ABI) { event = 3; return; }
     bindings.abi = TAPE_ABI;
+    bindings.user_base = user_partition.startaddr;
+    bindings.user_size = user_partition.memsize;
     bindings.draw = (TapeDrawArray)resolve_paf(module, paf, TAPE_NID_DRAW, TAPE_STUB_DRAW);
     bindings.enable = (TapeStateFunction)resolve_paf(module, paf, TAPE_NID_ENABLE, TAPE_STUB_ENABLE);
     bindings.disable = (TapeStateFunction)resolve_paf(module, paf, TAPE_NID_DISABLE, TAPE_STUB_DISABLE);
@@ -279,11 +281,15 @@ int module_start(SceSize args, void *argp)
 {
     SceUID fd, tid;
     unsigned version;
-    (void)args; (void)argp;
-    if (sceKernelInitKeyConfig() != PSP_INIT_KEYCONFIG_VSH || sceKernelGetModel() != 0) return 1;
+    int model;
+    if (sceKernelInitKeyConfig() != PSP_INIT_KEYCONFIG_VSH) return 1;
+    if (!tape_paths_init(argp, args) || usb_active()) return 1;
+    model = sceKernelGetModel(); /* Diagnostic only; every PSP model can activate. */
     version = sceKernelDevkitVersion();
-    if (version != 0x06060010 && version != 0x06060110) return 1;
-    if (usb_active()) return 1;
+    if (version != 0x06060010 && version != 0x06060110) {
+        report("Viz Tape " VIZ_TAPE_VERSION " SKIPPED: unsupported devkit=%08X model=%d\n", version, model);
+        return 1;
+    }
     /* Enabled by its PLUGINS.TXT line alone, like any ARK plugin. */
     if (!tape_guard_begin()) {
         report("Viz Tape " VIZ_TAPE_VERSION " SKIPPED: the previous start did not finish cleanly "
@@ -293,10 +299,19 @@ int module_start(SceSize args, void *argp)
     }
     /* A recovery boot appends its skip reason to the failed boot's log.
      * Only an actual activation starts a new log. */
-    fd = sceIoOpen(log_path, PSP_O_WRONLY|PSP_O_CREAT|PSP_O_TRUNC, 0777);
+    fd = sceIoOpen(TAPE_LOG_PATH, PSP_O_WRONLY|PSP_O_CREAT|PSP_O_TRUNC, 0777);
     if (fd >= 0) sceIoClose(fd);
     guarded = 1;
-    report("Viz Tape " VIZ_TAPE_VERSION " started; devkit=%08X model=0\n", version);
+    report("Viz Tape " VIZ_TAPE_VERSION " started; devkit=%08X model=%d storage=%s\n", version, model, tape_paths.device);
+    user_partition.size = sizeof user_partition;
+    if (sceKernelQueryMemoryPartitionInfo(PSP_MEMORY_PARTITION_USER, &user_partition) < 0 ||
+        !(user_partition.attr & 2) ||
+        !tape_set_user_memory(user_partition.startaddr, user_partition.memsize)) {
+        report("SKIPPED: user memory partition unavailable or invalid; hooks are off\n");
+        if (!usb_active() && tape_guard_finish()) guarded = 0;
+        return 1;
+    }
+    report("MEMORY user partition=%08X size=%08X\n", user_partition.startaddr, user_partition.memsize);
     /* Finish the first-install build before registering hooks or returning
      * to XMB startup, so even the first Music load can select the icon. */
     icon_event = tape_icon_resource_ready() ? 1 : 0;

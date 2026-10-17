@@ -1,14 +1,16 @@
 VIZ TAPE 1.2 — HOW TO INSTALL
-An animated cassette for the PSP Music player (PSP-1000, 6.61 ARK-4)
+An animated cassette for the PSP Music player (6.61 ARK-4)
+Models enabled: PSP-1000, PSP-2000, PSP-3000, PSP Go and PSP Street/E1000.
 
 WHAT YOU NEED
-  - Your PSP with ARK-4, and a USB cable (or a memory card reader).
+  - Your PSP with 6.61 ARK-4, and a USB cable (or a memory card reader).
   - This ZIP, unzipped. It contains a "seplugins" folder.
 
 INSTALL
   1. Connect the PSP to your computer and turn on USB mode.
 
-  2. Copy the "seplugins" folder from this ZIP onto the memory card,
+  2. Copy the "seplugins" folder from this ZIP onto the memory card
+     or PSP Go internal storage,
      at the top level (next to the PSP folder). If the card already has a
      seplugins or SEPLUGINS folder, let your computer merge the two.
      Nothing that is already there gets replaced.
@@ -18,6 +20,13 @@ INSTALL
      If there is no PLUGINS.TXT, create one. Add this one line at the end:
 
        vsh, ms0:/seplugins/viz_tape/viz_tape.prx, on
+
+     For PSP Go internal storage, use this line INSTEAD:
+
+       vsh, ef0:/seplugins/viz_tape/viz_tape.prx, on
+
+     Keep one Viz Tape entry. Generated files stay in seplugins/viz_tape
+     on the same storage device as the PRX.
 
      Keep any lines that are already there. Save it as PLUGINS.TXT.
 
@@ -52,7 +61,8 @@ IF THE CASSETTE DOESN'T SHOW UP
   and that seplugins/viz_tape has viz_tape.prx.
   The plugin writes notes to seplugins/viz_tape/status.txt.
   After a failed startup, the recovery boot preserves those notes and adds
-  its skip reason. The corrected build identifies itself as 1.2-dev2.
+  its skip reason. This build identifies itself as 1.2-dev3 and records
+  the model ID, storage device and user-memory partition.
   A RENDERER load/start failure leaves the stock visualizer selected.
 
 TESTING STATUS
@@ -62,6 +72,9 @@ TESTING STATUS
   and the boot guard cleared. Host tests and PSP build checks also pass.
   ARK reports a 6.60 compatibility value to plugins, so devkit=06060010 in
   status.txt does not identify the installed firmware as 6.60.
-  Extended playback and suspend/resume testing of this build is outstanding.
+  The newer 1.2-dev3 removes the model restriction and adds PSP Go storage
+  and memory-partition handling. Host tests and PSP build checks pass.
+  Hardware tests on 2000/3000/Go/Street, a new 1000 regression test, and
+  extended playback and suspend/resume tests remain outstanding.
 
 More details: https://github.com/beckerd/psp_viz_tape

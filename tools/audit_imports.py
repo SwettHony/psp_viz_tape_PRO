@@ -15,6 +15,7 @@ sceKernelStartThread sceKernelExitDeleteThread strcmp strlen memcmp snprintf
 sceKernelLoadModuleBuffer sceKernelStartModule sceKernelUnloadModule
 sceKernelAllocPartitionMemory sceKernelGetBlockHeadAddr sceKernelFreePartitionMemory memcpy memset
 sceKernelDevkitVersion sceKernelGetModel sceKernelInitKeyConfig sceKernelApplicationType
+sceKernelQueryMemoryPartitionInfo
 sceUsbGetState'''.split())
 allowed_render = {'sceKernelGetSystemTimeLow', 'sceKernelDcacheWritebackRange'}
 lines = []

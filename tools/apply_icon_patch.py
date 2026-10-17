@@ -49,7 +49,7 @@ def main():
     except (OSError, ValueError, KeyError, TypeError) as error:
         parser.exit(1, f'Icon patch failed: {error}\n')
     print(f'Created {args.output} ({len(result)} bytes). SHA-256: {patch["output_sha256"]}')
-    print('Copy this file to ms0:/seplugins/viz_tape/ to enable the cassette thumbnail.')
+    print('Copy this file to seplugins/viz_tape/ on the same storage as the PRX (ms0: or ef0:) to enable the cassette thumbnail.')
 
 
 if __name__ == '__main__':

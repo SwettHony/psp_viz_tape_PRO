@@ -2,6 +2,19 @@
 
 ## 1.2 — unreleased
 
+- Enable all retail PSP models: 1000, 2000, 3000, Go and Street/E1000. Version
+  1.1's startup check silently rejected every model except the 1000.
+- Select ms0: or ef0: from the installed plugin path for logs, the boot guard,
+  storage sync and the cassette resource, including its RAM redirect.
+- Query the actual user-memory partition and share its bounds with the
+  renderer. Validate relocated modules in expanded user RAM without widening
+  checks on devices where that RAM is unavailable. Retain exact firmware
+  signatures, resource validation and the boot guard.
+- Log model, storage and memory bounds as `1.2-dev3`. Add sanitizer regressions
+  across model IDs, both storage devices, low/high address relocations and
+  invalid partition data. Hardware testing of these compatibility changes is
+  pending; the earlier PSP-1000 result below applies to `1.2-dev2`.
+
 - Install one `viz_tape.prx` and one PLUGINS.TXT entry. The kernel plugin
   embeds the renderer and a worker loads it into user memory; nothing is
   extracted to the card. The renderer keeps its user-mode drawing context.

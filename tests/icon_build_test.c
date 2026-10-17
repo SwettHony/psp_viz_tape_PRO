@@ -13,11 +13,13 @@ static unsigned size[FILES], position[FILES], read_limit = 512;
 static int exists[FILES], open_mode[FILES], open_files, card_writes;
 static int fail_open_stock, fail_open_card, fail_read_at = -1, fail_write, fail_close_card;
 static int reads;
+static const char *expected_device;
 
 static int which(const char *path)
 {
     if (!strcmp(path, tape_stock_icon_path)) return STOCK;
     assert(!strcmp(path, TAPE_ICON_PATH));
+    assert(!strncmp(path, expected_device, 4));
     return CARD;
 }
 SceUID sceIoOpen(const char *path, int flags, int mode)
@@ -85,7 +87,7 @@ static void reset(void)
     exists[STOCK] = 1;
 }
 
-int main(int argc, char **argv)
+static void check_build(int argc, char **argv)
 {
     /* A small synthetic patch: header data, two stock copies, more data. */
     static const TapePatchOp ops[] = { {0, 0, 5}, {1, 10, 2000}, {0, 4, 3}, {1, 3000, 1000} };
@@ -182,6 +184,16 @@ int main(int argc, char **argv)
         assert(!tape_icon_build() && card_writes == 0 && !exists[CARD]);
         puts("Icon build: real patch reproduces the expected visualizer.rco byte for byte.");
     }
-    puts("Icon build: verified dry run first, exact source size, short reads, no card writes for a different stock file, cleanup after every I/O failure.");
+}
+
+int main(int argc, char **argv)
+{
+    const char *path = "ms0:/seplugins/viz_tape/viz_tape.prx";
+    expected_device = "ms0:";
+    assert(tape_paths_init(path, strlen(path)+1)); check_build(argc, argv);
+    path = "ef0:/seplugins/viz_tape/viz_tape.prx";
+    expected_device = "ef0:";
+    assert(tape_paths_init(path, strlen(path)+1)); check_build(argc, argv);
+    puts("Icon build: Memory Stick/Go destinations, verified dry run, short reads, wrong-source rejection and I/O cleanup passed.");
     return 0;
 }
