@@ -8,7 +8,11 @@ typedef struct {
     unsigned flags;
     char position, access, creserved[2];
 } SceKernelLMOption;
-SceUID sceKernelLoadModuleBuffer(void *, SceSize, int, SceKernelLMOption *);
+/* Keep the SDK's declaration, but bind it to the same symbol as the corrected
+ * firmware alias even on Darwin (which normally prefixes C names with '_').
+ * Accidentally using the SDK argument order must reach and fail the ABI test. */
+SceUID sceKernelLoadModuleBuffer(void *, SceSize, int, SceKernelLMOption *)
+    __asm__("sceKernelLoadModuleBuffer");
 int sceKernelStartModule(SceUID, SceSize, void *, int *, void *);
 int sceKernelUnloadModule(SceUID);
 #endif

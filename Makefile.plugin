@@ -12,9 +12,13 @@ LIBS = -lpspsystemctrl_kernel -lpspusb_driver
 PSPSDK = $(shell psp-config --pspsdk-path)
 include $(PSPSDK)/lib/build.mak
 
-plugin.o: runtime.h profile.h safety.h icon.h renderer_payload.h
-renderer_payload.o: renderer_payload.S viz_tape_render.prx
+plugin.o: runtime.h profile.h safety.h icon.h renderer_payload.h module_loader.h
+renderer_payload.o: renderer_payload.S viz_tape_render.prx build/renderer_buffer.h
 	$(CC) $(CFLAGS) -c renderer_payload.S -o $@
+
+build/renderer_buffer.h: viz_tape_render.prx tools/renderer_buffer.py
+	mkdir -p build
+	python3 tools/renderer_buffer.py viz_tape_render.prx $@
 
 # The top-level make builds the renderer first; also support a fresh direct build.
 viz_tape_render.prx:

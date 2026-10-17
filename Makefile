@@ -43,6 +43,7 @@ host-check:
 	build/guard_test
 	cc -std=c99 -O2 -Wall -Wextra -Werror -g -fsanitize=address,undefined -Itests/psp_stubs safety.c tests/plugin_test.c -o build/plugin_test
 	build/plugin_test
+	python3 tests/renderer_buffer_test.py
 	python3 tests/icon_patch_test.py
 	python3 tools/build_icon_header.py --check
 	cc -std=c99 -O2 -Wall -Wextra -Werror -g -fsanitize=address,undefined -Itests/psp_stubs icon.c icon_build.c tests/icon_build_test.c -o build/icon_build_test

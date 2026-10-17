@@ -6,8 +6,9 @@ I wanted the PSP's Music player to look like a tape deck, so this plugin
 turns its last visualizer into an animated cassette: the reels turn, the tape
 winds from one reel to the other, and after 15 minutes it flips to Side B.
 
-The original two-plugin version runs on my PSP-1000 with ARK-4. The new
-single-file loader in this branch still needs hardware testing.
+The original two-plugin version runs on my PSP-1000 with ARK-4. The initial
+single-file loader froze during startup. This branch corrects its loader
+arguments and buffer bounds; the corrected build still needs a PSP retest.
 
 This was written by Astra and Opus5.5 if you do not want code written by AI on your PSP
 this project is not for you.
@@ -62,8 +63,9 @@ embedded in `viz_tape.prx`. The old `enabled.txt` is also no longer used.
 - PSP-1000 (32 MB), ARK-4, 6.61, 128 GB memory card, alongside xmb_gamecache.
 
 The cassette rendering features ran on that PSP with zero renderer errors in
-the two-plugin version. The new single-file loader has passed host tests and
-the PSP build audit; hardware validation is pending. The plugin checks the
+the two-plugin version. The initial single-file loader failed its startup test;
+the corrected `1.2-dev2` build has passed host tests and the PSP build audit,
+but hardware validation is pending. The plugin checks the
 exact firmware code it patches and goes inert on anything else, but other models, firmware
 versions and PSP Go internal storage are **unverified**. Reports (good and
 bad) are very welcome — please open an issue.
@@ -84,6 +86,8 @@ bad) are very welcome — please open an issue.
   `ICON created visualizer.rco from the stock resource` means the icon was
   made, `ICON cassette resource selected in RAM` means it is in use, and
   `SEEK fast-forward/rewind state found` means seeking is detected.
+  A boot-guard recovery preserves the failed startup's log and appends the
+  skip reason. Renderer load/start checkpoints are flushed before each call.
 - If the cassette doesn't appear, check the PLUGINS.TXT line and
   `seplugins/viz_tape/viz_tape.prx`. A `RENDERER load failed` or
   `RENDERER start failed` status means the embedded runtime could not start;
@@ -134,7 +138,10 @@ The renderer is embedded as a user PRX inside the kernel plugin. A startup
 worker loads it from memory into the PSP's user partition and starts it before
 any draw pointer can refer to it. If Music loads first, the worker checks and
 patches that already-loaded visualizer after the renderer starts. No renderer
-file is extracted to the card. Kernel patching and user-mode drawing remain
+file is extracted to the card. Loading uses the size-first 6.60/6.61 firmware
+ABI and a temporary zero-padded user buffer covering the renderer's full
+memory image, including BSS. That buffer is freed after loading.
+Kernel patching and user-mode drawing remain
 separate at runtime, with one file and one plugin entry to install.
 
 The user-mode renderer draws the cassette in software into a fixed 480×272

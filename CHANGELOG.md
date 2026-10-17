@@ -9,7 +9,15 @@
   pointer, and revisit a visualizer that loads before the renderer is ready.
 - Verify the embedded runtime bytes and 64-byte buffer alignment during the
   binary audit. The release ZIP and install checksums include only one PRX.
-- The single-file loader is host/build tested; PSP hardware testing is pending.
+- Correct the initial single-file build's startup failure: the 6.60/6.61
+  firmware import expects size before buffer, despite the SDK declaration.
+  Use a temporary zero-padded user buffer covering the full loaded image,
+  since the plain-PRX loader can copy beyond the file length through BSS.
+- Preserve the failed startup log when the boot guard skips activation, and
+  flush renderer load/start checkpoints. Corrected logs identify `1.2-dev2`.
+- Add regressions for the firmware argument order, padded buffer and cleanup,
+  allocation failures, and recovery-log preservation. The corrected loader
+  is host/build tested; a PSP hardware retest is pending.
 
 - Validate the icon resource again before every Music-module redirect, so a
   file removed or changed over USB cannot reuse its startup validation. Keep

@@ -3,6 +3,8 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import struct
+from renderer_buffer import required_size
 
 allowed_kernel = set('''sctrlHENFindFunction sctrlHENSetStartModuleHandler
 sceKernelFindModuleByName sceKernelFindModuleByUID
@@ -11,6 +13,7 @@ sceKernelDcacheWritebackAll sceKernelCpuSuspendIntr sceKernelCpuResumeIntr
 sceKernelDelayThread sceKernelCreateThread sceKernelDeleteThread
 sceKernelStartThread sceKernelExitDeleteThread strcmp strlen memcmp snprintf
 sceKernelLoadModuleBuffer sceKernelStartModule sceKernelUnloadModule
+sceKernelAllocPartitionMemory sceKernelGetBlockHeadAddr sceKernelFreePartitionMemory memcpy memset
 sceKernelDevkitVersion sceKernelGetModel sceKernelInitKeyConfig sceKernelApplicationType
 sceUsbGetState'''.split())
 allowed_render = {'sceKernelGetSystemTimeLow', 'sceKernelDcacheWritebackRange'}
@@ -42,4 +45,9 @@ symbols = subprocess.check_output(['psp-nm', '--defined-only', 'viz_tape.elf'], 
 address = re.search(r'^(\w+) \w tape_renderer_prx$', symbols, re.M)
 if not address or int(address[1], 16) % 64:
     sys.exit('Embedded renderer buffer is not 64-byte aligned')
-print('Binary audit passed: reviewed imports, exact embedded renderer and 64-byte buffer alignment.')
+# The two size words follow the exact embedded payload, rounded to a word.
+kernel = Path('viz_tape.prx').read_bytes()
+sizes_at = kernel.index(renderer) + ((len(renderer) + 3) & ~3)
+if struct.unpack_from('<II', kernel, sizes_at) != (len(renderer), required_size(renderer)):
+    sys.exit('Embedded renderer size or staging buffer extent is incorrect')
+print('Binary audit passed: reviewed imports, exact embedded renderer, alignment and full-image staging size.')

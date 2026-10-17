@@ -13,9 +13,10 @@
 #include "safety.h"
 #include "icon.h"
 #include "renderer_payload.h"
+#include "module_loader.h"
 
 PSP_MODULE_INFO("viz_tape", PSP_MODULE_KERNEL, 1, 2);
-#define VIZ_TAPE_VERSION "1.2"
+#define VIZ_TAPE_VERSION "1.2-dev2"
 PSP_NO_CREATE_MAIN_THREAD();
 
 static STMOD_HANDLER previous_handler;
@@ -57,6 +58,13 @@ static void log_message(const char *message)
     if (fd >= 0) { sceIoWrite(fd, message, strlen(message)); sceIoClose(fd); }
 }
 #define report(...) do { char msg[256]; snprintf(msg, sizeof msg, __VA_ARGS__); log_message(msg); } while (0)
+
+/* Persist the last stage before entering the firmware module manager. */
+static void checkpoint(const char *message)
+{
+    log_message(message);
+    if (!usb_active()) sceIoSync("ms0:", 0);
+}
 
 static int module_contains(SceModule *m, uintptr_t p, size_t size)
 {
@@ -177,7 +185,8 @@ static void start_renderer(void)
         .size = sizeof(SceKernelLMOption),
         .mpidtext = PSP_MEMORY_PARTITION_USER, .mpiddata = PSP_MEMORY_PARTITION_USER
     };
-    SceUID uid;
+    SceUID uid, buffer_id;
+    void *buffer;
     SceModule *viz;
     int result, status = -1, irq;
     /* Avoid duplicate instances when the plugin is accidentally loaded twice. */
@@ -185,11 +194,32 @@ static void start_renderer(void)
         report("RENDERER skipped: runtime already loaded; restart with one Viz Tape entry\n");
         return;
     }
-    uid = sceKernelLoadModuleBuffer(tape_renderer_prx, tape_renderer_prx_size, 0, &options);
+    /* The plain-PRX loader copies the greater of the file length and loaded
+     * segment span (including BSS). Do not let it read past our embedded
+     * bytes into unrelated kernel memory. Release this user-memory staging
+     * block as soon as the synchronous load completes. */
+    buffer_id = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "VizTapeLoad",
+                                              PSP_SMEM_High, tape_renderer_buffer_size, 0);
+    if (buffer_id < 0) {
+        report("RENDERER buffer allocation failed: %08X; stock visualizer kept\n", (unsigned)buffer_id);
+        return;
+    }
+    buffer = sceKernelGetBlockHeadAddr(buffer_id);
+    if (!buffer || ((uintptr_t)buffer & 63)) {
+        sceKernelFreePartitionMemory(buffer_id);
+        report("RENDERER buffer unavailable or unaligned; stock visualizer kept\n");
+        return;
+    }
+    memset(buffer, 0, tape_renderer_buffer_size);
+    memcpy(buffer, tape_renderer_prx, tape_renderer_prx_size);
+    checkpoint("RENDERER loading embedded runtime (size-first firmware ABI)\n");
+    uid = tape_load_module_buffer(tape_renderer_prx_size, buffer, 0, &options);
+    sceKernelFreePartitionMemory(buffer_id);
     if (uid < 0) {
         report("RENDERER load failed: %08X; stock visualizer kept\n", (unsigned)uid);
         return;
     }
+    checkpoint("RENDERER starting embedded runtime\n");
     result = sceKernelStartModule(uid, 0, 0, &status, 0);
     if (result <= 0 || status != 0) {
         /* A nonresident/failed start may already have unloaded the module. */
@@ -255,14 +285,16 @@ int module_start(SceSize args, void *argp)
     if (version != 0x06060010 && version != 0x06060110) return 1;
     if (usb_active()) return 1;
     /* Enabled by its PLUGINS.TXT line alone, like any ARK plugin. */
-    fd = sceIoOpen(log_path, PSP_O_WRONLY|PSP_O_CREAT|PSP_O_TRUNC, 0777);
-    if (fd >= 0) sceIoClose(fd);
     if (!tape_guard_begin()) {
         report("Viz Tape " VIZ_TAPE_VERSION " SKIPPED: the previous start did not finish cleanly "
                "(or boot-guard.txt could not be written). Hooks are off for this "
                "start only; the next start tries again.\n");
         return 1;
     }
+    /* A recovery boot appends its skip reason to the failed boot's log.
+     * Only an actual activation starts a new log. */
+    fd = sceIoOpen(log_path, PSP_O_WRONLY|PSP_O_CREAT|PSP_O_TRUNC, 0777);
+    if (fd >= 0) sceIoClose(fd);
     guarded = 1;
     report("Viz Tape " VIZ_TAPE_VERSION " started; devkit=%08X model=0\n", version);
     /* Finish the first-install build before registering hooks or returning

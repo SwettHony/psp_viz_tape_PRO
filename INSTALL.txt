@@ -51,10 +51,12 @@ IF THE CASSETTE DOESN'T SHOW UP
   Check that the single line is in PLUGINS.TXT exactly as above,
   and that seplugins/viz_tape has viz_tape.prx.
   The plugin writes notes to seplugins/viz_tape/status.txt.
+  After a failed startup, the recovery boot preserves those notes and adds
+  its skip reason. The corrected build identifies itself as 1.2-dev2.
   A RENDERER load/start failure leaves the stock visualizer selected.
 
 TESTING STATUS
-  The single-file loader has passed host tests and PSP build checks.
-  Hardware testing of this new loader is still pending.
+  The first single-file build froze during PSP startup. The corrected
+  1.2-dev2 build passes host tests and PSP build checks; a PSP retest is pending.
 
 More details: https://github.com/beckerd/psp_viz_tape
