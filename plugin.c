@@ -84,6 +84,32 @@ static uintptr_t resolve_paf(SceModule *viz, SceModule *paf, unsigned nid, unsig
     return p;
 }
 
+/* Look an export up in the module's own export tables instead of relying on
+ * the CFW's sctrlHENFindFunction to also search variable exports (ARK does,
+ * not every CFW does). Read-only and bounded by the module's segments. */
+static uintptr_t find_export(SceModule *m, const char *library, unsigned nid)
+{
+    const unsigned char *p, *end;
+    if (!m || !m->ent_top || !m->ent_size || m->ent_size > 0x4000) return 0;
+    p = (const unsigned char *)m->ent_top;
+    end = p + m->ent_size;
+    if (!module_contains(m, (uintptr_t)p, m->ent_size)) return 0;
+    while (p + sizeof(SceLibraryEntryTable) <= end) {
+        const SceLibraryEntryTable *e = (const SceLibraryEntryTable *)p;
+        unsigned size = (unsigned)e->len * 4, total = e->stubcount + e->vstubcount, i;
+        const uint32_t *table = (const uint32_t *)e->entrytable;
+        if (size < sizeof(SceLibraryEntryTable) || size > (unsigned)(end - p)) return 0;
+        if (e->libname && module_contains(m, (uintptr_t)e->libname, 1) &&
+            strcmp(e->libname, library) == 0 && total && total <= 64 &&
+            module_contains(m, (uintptr_t)table, total * 8)) {
+            for (i = 0; i < total; ++i)
+                if (table[i] == nid) return table[total + i];
+        }
+        p += size;
+    }
+    return 0;
+}
+
 static void patch_visualizer(SceModule *module)
 {
     SceModule *renderer, *paf;
@@ -104,8 +130,11 @@ static void patch_visualizer(SceModule *module)
     renderer = sceKernelFindModuleByName(TAPE_RENDERER_MODULE);
     paf = sceKernelFindModuleByName("scePaf_Module");
     draw = sctrlHENFindFunction(TAPE_RENDERER_MODULE, TAPE_RENDERER_LIBRARY, 0xeab11153);
-    /* ARK's export lookup searches both function and variable exports. */
-    bridge_address = sctrlHENFindFunction(TAPE_RENDERER_MODULE, TAPE_RENDERER_LIBRARY, 0x99f748f8);
+    /* The bridge is a variable export. Walk the export table ourselves so this
+     * also works on CFWs whose sctrlHENFindFunction only searches functions. */
+    bridge_address = find_export(renderer, TAPE_RENDERER_LIBRARY, 0x99f748f8);
+    if (!bridge_address)
+        bridge_address = sctrlHENFindFunction(TAPE_RENDERER_MODULE, TAPE_RENDERER_LIBRARY, 0x99f748f8);
     if (!renderer || !paf ||
         !tape_range_contains(renderer->text_addr, renderer->text_size, draw, 4) ||
         !module_contains(renderer, bridge_address, sizeof(TapeBridge))) {
@@ -290,7 +319,7 @@ int module_start(SceSize args, void *argp)
         report("Viz Tape " VIZ_TAPE_VERSION " SKIPPED: unsupported devkit=%08X model=%d\n", version, model);
         return 1;
     }
-    /* Enabled by its PLUGINS.TXT line alone, like any ARK plugin. */
+    /* Enabled by its plugin-list line alone (PLUGINS.TXT on ARK, vsh.txt on PRO). */
     if (!tape_guard_begin()) {
         report("Viz Tape " VIZ_TAPE_VERSION " SKIPPED: the previous start did not finish cleanly "
                "(or boot-guard.txt could not be written). Hooks are off for this "
@@ -337,5 +366,5 @@ int module_start(SceSize args, void *argp)
     return 0;
 }
 
-/* ARK's chained handler can remain referenced by later plugins. */
+/* The chained start handler can remain referenced by later plugins. */
 int module_stop(SceSize args, void *argp) { (void)args; (void)argp; return -1; }
