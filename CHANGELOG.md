@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## 1.2 — unreleased
+
+- Install one `viz_tape.prx` and one PLUGINS.TXT entry. The kernel plugin
+  embeds the renderer and a worker loads it into user memory; nothing is
+  extracted to the card. The renderer keeps its user-mode drawing context.
+- Handle renderer load/start failures without changing the native draw
+  pointer, and revisit a visualizer that loads before the renderer is ready.
+- Verify the embedded runtime bytes and 64-byte buffer alignment during the
+  binary audit. The release ZIP and install checksums include only one PRX.
+- The single-file loader is host/build tested; PSP hardware testing is pending.
 
 - Validate the icon resource again before every Music-module redirect, so a
   file removed or changed over USB cannot reuse its startup validation. Keep

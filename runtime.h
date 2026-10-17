@@ -4,6 +4,10 @@
 
 #define TAPE_ABI 0x54415004u
 #define TAPE_READY 0x52554e04u
+/* Private runtime loaded from the kernel plugin's embedded PRX. These names
+ * differ from the old separately installed renderer to avoid binding to it. */
+#define TAPE_RENDERER_MODULE "viz_tape_runtime"
+#define TAPE_RENDERER_LIBRARY "VizTapeRuntime"
 /* Per-frame rectangle capacity. Measured peaks: 1,198 on hardware (0.8) and
  * 2,164 across sampled host states; overflow drops one frame, never writes. */
 #define TAPE_RECTS 4096

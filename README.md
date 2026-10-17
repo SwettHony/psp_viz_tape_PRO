@@ -6,7 +6,8 @@ I wanted the PSP's Music player to look like a tape deck, so this plugin
 turns its last visualizer into an animated cassette: the reels turn, the tape
 winds from one reel to the other, and after 15 minutes it flips to Side B.
 
-Working beautifully on my PSP-1000 with ARK-4. Use at your own risk of course.
+The original two-plugin version runs on my PSP-1000 with ARK-4. The new
+single-file loader in this branch still needs hardware testing.
 
 This was written by Astra and Opus5.5 if you do not want code written by AI on your PSP
 this project is not for you.
@@ -31,18 +32,16 @@ this project is not for you.
 
 ## Install
 
-1. Download `viz_tape-v1.1.zip` from the
-   [latest release](https://github.com/beckerd/psp_viz_tape/releases/latest)
-   and unzip it.
+1. Unzip `viz_tape-v1.2.zip`. This version is not published yet; build the ZIP
+   with `make release` as described below.
 2. Connect your PSP to your computer in USB mode.
 3. Copy the `seplugins` folder from the ZIP onto the root of the memory card.
    If the card already has a `seplugins` (or `SEPLUGINS`) folder, let your
    computer merge them; nothing else in it is replaced.
 4. Open `seplugins/PLUGINS.TXT` on the card in a plain-text editor (create it
-   if it doesn't exist) and add these two lines:
+   if it doesn't exist) and add this one line:
 
    ```
-   vsh, ms0:/seplugins/viz_tape/viz_tape_render.prx, on
    vsh, ms0:/seplugins/viz_tape/viz_tape.prx, on
    ```
 
@@ -53,17 +52,19 @@ That's it. On the first start the plugin creates the cassette icon during
 startup, ready for the first Music session. [INSTALL.txt](INSTALL.txt)
 in the ZIP has the same steps, plus how to update and uninstall.
 
-**Updating from 1.0:** turn both lines `off`, copy the new `seplugins` folder
-over the old one, then turn them back `on`. The old `enabled.txt` is no
-longer used and can be deleted.
+**Updating from 1.0 or 1.1:** replace the two old Viz Tape lines with the single
+line above, copy the new `seplugins` folder over the old one, then restart the
+PSP before opening Music. Delete the obsolete `viz_tape_render.prx`; it is now
+embedded in `viz_tape.prx`. The old `enabled.txt` is also no longer used.
 
 ## Tested on
 
 - PSP-1000 (32 MB), ARK-4, 6.61, 128 GB memory card, alongside xmb_gamecache.
 
-Every feature above ran on that PSP with zero renderer errors. That is the
-honest extent of hardware testing. The plugin checks the exact firmware code
-it patches and goes inert on anything else, but other models, firmware
+The cassette rendering features ran on that PSP with zero renderer errors in
+the two-plugin version. The new single-file loader has passed host tests and
+the PSP build audit; hardware validation is pending. The plugin checks the
+exact firmware code it patches and goes inert on anything else, but other models, firmware
 versions and PSP Go internal storage are **unverified**. Reports (good and
 bad) are very welcome — please open an issue.
 
@@ -74,7 +75,7 @@ bad) are very welcome — please open an issue.
   next start skips the plugin once, so a fault can never become a boot loop.
   (Launching a game or entering USB mode within 15 seconds has the same
   harmless one-start effect.)
-- To disable it, change both Viz Tape lines in PLUGINS.TXT to `off` over USB,
+- To disable it, change the Viz Tape line in PLUGINS.TXT to `off` over USB,
   or hold **START** while powering on to bypass ARK plugins for one boot, or
   use ARK's **Recovery Menu** (hold R at power-on). See ARK's
   [recovery guide](https://github.com/PSP-Archive/ARK-4/wiki/Recovery).
@@ -83,8 +84,10 @@ bad) are very welcome — please open an issue.
   `ICON created visualizer.rco from the stock resource` means the icon was
   made, `ICON cassette resource selected in RAM` means it is in use, and
   `SEEK fast-forward/rewind state found` means seeking is detected.
-- If the cassette doesn't appear, check both PLUGINS.TXT lines and their
-  order (renderer first).
+- If the cassette doesn't appear, check the PLUGINS.TXT line and
+  `seplugins/viz_tape/viz_tape.prx`. A `RENDERER load failed` or
+  `RENDERER start failed` status means the embedded runtime could not start;
+  the stock visualizer is kept.
 
 ## Known limitations
 
@@ -107,12 +110,14 @@ export PATH=$PSPDEV/bin:$PATH
 make
 ```
 
-`make` builds both PRXs, audits their imports and writes `SHA256SUMS`.
-`make release` builds the release ZIP.
+`make` builds the user-mode renderer, embeds it in `viz_tape.prx`, audits both
+modules' imports and the embedded bytes/alignment, and writes `SHA256SUMS`.
+Only `viz_tape.prx` is installed. `viz_tape_render.prx` is a build intermediate.
+`make release` builds the ZIP with the single installable PRX.
 
 `make host-check` runs the host tests (rendering, animation, mesh, frame cache,
-address checks, startup and USB lifecycle, boot guard and the on-PSP icon
-builder) under AddressSanitizer and UndefinedBehaviorSanitizer.
+address checks, embedded runtime loading, startup and USB lifecycle, boot
+guard and the on-PSP icon builder) under AddressSanitizer and UndefinedBehaviorSanitizer.
 `make profile-check` and `make icon-check` also verify the firmware signatures,
 but need private firmware captures that are not in this repository.
 
@@ -124,6 +129,13 @@ sizes, the final effect's 15-entry vtable, code signatures and import stubs —
 and only then replaces that effect's one draw pointer in user RAM with the
 renderer's. It also locates the visualizer's playback-state word (play,
 pause, fast-forward, rewind) for the renderer to read.
+
+The renderer is embedded as a user PRX inside the kernel plugin. A startup
+worker loads it from memory into the PSP's user partition and starts it before
+any draw pointer can refer to it. If Music loads first, the worker checks and
+patches that already-loaded visualizer after the renderer starts. No renderer
+file is extracted to the card. Kernel patching and user-mode drawing remain
+separate at runtime, with one file and one plugin entry to install.
 
 The user-mode renderer draws the cassette in software into a fixed 480×272
 buffer, run-length-merges it into rectangles and submits them through the

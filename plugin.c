@@ -4,6 +4,7 @@
 #include <pspintrman.h>
 #include <pspinit.h>
 #include <pspusb.h>
+#include <pspmodulemgr_kernel.h>
 #include <systemctrl.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,14 +12,16 @@
 #include "runtime.h"
 #include "safety.h"
 #include "icon.h"
+#include "renderer_payload.h"
 
-PSP_MODULE_INFO("viz_tape", PSP_MODULE_KERNEL, 1, 1);
-#define VIZ_TAPE_VERSION "1.1"
+PSP_MODULE_INFO("viz_tape", PSP_MODULE_KERNEL, 1, 2);
+#define VIZ_TAPE_VERSION "1.2"
 PSP_NO_CREATE_MAIN_THREAD();
 
 static STMOD_HANDLER previous_handler;
 static volatile unsigned event, patched_base, seek_event;
 static volatile unsigned icon_event;
+static volatile int renderer_started;
 static const char *const icon_events[] = {
     "ICON skipped: resource missing or failed validation",
     "ICON ready: waiting for Music player",
@@ -34,7 +37,8 @@ static const char log_path[] = "ms0:/seplugins/viz_tape/status.txt";
 static const char *const events[] = {
     "waiting for visualizer", "PATCHED final brown-line slot 7",
     "SKIPPED: firmware layout mismatch", "SKIPPED: renderer export/ABI mismatch",
-    "SKIPPED: PAF exports do not match native imports", "SKIPPED: draw slot changed"
+    "SKIPPED: PAF exports do not match native imports", "SKIPPED: draw slot changed",
+    "waiting for embedded renderer"
 };
 
 static volatile int guarded;
@@ -80,6 +84,7 @@ static void patch_visualizer(SceModule *module)
     volatile TapeBridge *bridge;
     TapeBindings bindings;
     int irq;
+    if (!renderer_started) { event = 6; return; }
     if (module->nsegment != 2 || module->text_size != TAPE_TEXT_SIZE ||
         module->data_size != TAPE_DATA_SIZE || module->bss_size != TAPE_BSS_SIZE ||
         module->segmentaddr[0] != module->text_addr ||
@@ -88,11 +93,11 @@ static void patch_visualizer(SceModule *module)
         !tape_profile_matches((void *)module->text_addr, module->text_size, module->text_addr)) {
         event = 2; return;
     }
-    renderer = sceKernelFindModuleByName("viz_tape_render");
+    renderer = sceKernelFindModuleByName(TAPE_RENDERER_MODULE);
     paf = sceKernelFindModuleByName("scePaf_Module");
-    draw = sctrlHENFindFunction("viz_tape_render", "VizTape", 0xeab11153);
+    draw = sctrlHENFindFunction(TAPE_RENDERER_MODULE, TAPE_RENDERER_LIBRARY, 0xeab11153);
     /* ARK's export lookup searches both function and variable exports. */
-    bridge_address = sctrlHENFindFunction("viz_tape_render", "VizTape", 0x99f748f8);
+    bridge_address = sctrlHENFindFunction(TAPE_RENDERER_MODULE, TAPE_RENDERER_LIBRARY, 0x99f748f8);
     if (!renderer || !paf ||
         !tape_range_contains(renderer->text_addr, renderer->text_size, draw, 4) ||
         !module_contains(renderer, bridge_address, sizeof(TapeBridge))) {
@@ -164,12 +169,53 @@ static int on_module_start(SceModule *module)
     return result;
 }
 
+/* Module-manager operations cannot be nested inside module_start or its
+ * handler. The worker queues this load after our own module_start returns. */
+static void start_renderer(void)
+{
+    SceKernelLMOption options = {
+        .size = sizeof(SceKernelLMOption),
+        .mpidtext = PSP_MEMORY_PARTITION_USER, .mpiddata = PSP_MEMORY_PARTITION_USER
+    };
+    SceUID uid;
+    SceModule *viz;
+    int result, status = -1, irq;
+    /* Avoid duplicate instances when the plugin is accidentally loaded twice. */
+    if (sceKernelFindModuleByName(TAPE_RENDERER_MODULE)) {
+        report("RENDERER skipped: runtime already loaded; restart with one Viz Tape entry\n");
+        return;
+    }
+    uid = sceKernelLoadModuleBuffer(tape_renderer_prx, tape_renderer_prx_size, 0, &options);
+    if (uid < 0) {
+        report("RENDERER load failed: %08X; stock visualizer kept\n", (unsigned)uid);
+        return;
+    }
+    result = sceKernelStartModule(uid, 0, 0, &status, 0);
+    if (result <= 0 || status != 0) {
+        /* A nonresident/failed start may already have unloaded the module. */
+        if (sceKernelFindModuleByUID(uid)) sceKernelUnloadModule(uid);
+        report("RENDERER start failed: %08X status=%08X; stock visualizer kept\n",
+               (unsigned)result, (unsigned)status);
+        return;
+    }
+    /* A Music session can race the worker. Cover an already loaded visualizer
+     * as well as future module-start callbacks. Keep lookup and the complete
+     * patch check atomic against unload; this path has no I/O or waits. */
+    irq = sceKernelCpuSuspendIntr();
+    renderer_started = 1;
+    viz = sceKernelFindModuleByName("visualizer_module");
+    if (viz) patch_visualizer(viz);
+    sceKernelCpuResumeIntr(irq);
+    report("RENDERER embedded runtime started in user memory\n");
+}
+
 /* status.txt is a short startup summary: one line per state change (icon,
  * seeking, cassette hook) during the first five minutes, then nothing. */
 static int reporter(SceSize args, void *argp)
 {
     unsigned i, last_event = 0, last_icon_event = 1, last_seek_event = 0;
     (void)args; (void)argp;
+    start_renderer();
     for (i = 0; i < 60; ++i) {
         unsigned current;
         sceKernelDelayThread(5000000);

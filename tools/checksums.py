@@ -5,7 +5,7 @@ import json
 import re
 
 root = Path(__file__).resolve().parents[1]
-names = ['viz_tape_render.prx', 'viz_tape.prx']
+names = ['viz_tape.prx']
 icon = root / 'visualizer.rco'
 if icon.exists():
     # The kernel only redirects to a resource with this exact size and FNV-1a.

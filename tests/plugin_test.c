@@ -13,6 +13,18 @@ static int (*status_entry)(SceSize, void *);
 static STMOD_HANDLER installed;
 static char messages[4096];
 static size_t message_size;
+unsigned char tape_renderer_prx[64] __attribute__((aligned(64))) = {0x7f, 'E', 'L', 'F'};
+const unsigned int tape_renderer_prx_size = sizeof tape_renderer_prx;
+static int worker_running, load_result, module_start_result, module_status;
+static int load_calls, module_start_calls, unload_calls, runtime_present;
+static int viz_present, profile_checks, start_auto_unloads, start_callback;
+static SceModule runtime_module;
+static SceModule visualizer = {
+    .nsegment = 2, .text_addr = 0x08900000, .text_size = TAPE_TEXT_SIZE,
+    .data_size = TAPE_DATA_SIZE, .bss_size = TAPE_BSS_SIZE,
+    .segmentaddr = {0x08900000}, .segmentsize = {TAPE_TEXT_SIZE},
+    .modname = "visualizer_module"
+};
 static SceModule music = {
     .nsegment = 2, .text_addr = 0x08800000, .text_size = TAPE_MUSIC_TEXT_SIZE,
     .data_size = TAPE_MUSIC_DATA_SIZE, .bss_size = TAPE_MUSIC_BSS_SIZE,
@@ -54,7 +66,49 @@ int sceKernelStartThread(SceUID tid, SceSize args, void *argp)
     return 0;
 }
 int sceKernelDeleteThread(SceUID tid) { assert(tid == create_result); ++deleted; return 0; }
-SceModule *sceKernelFindModuleByName(const char *name) { (void)name; return 0; }
+SceModule *sceKernelFindModuleByName(const char *name)
+{
+    if (!strcmp(name, TAPE_RENDERER_MODULE)) return runtime_present ? &runtime_module : 0;
+    if (!strcmp(name, "visualizer_module")) {
+        assert(interrupts); /* Catch-up lookup cannot race a module unload. */
+        return viz_present ? &visualizer : 0;
+    }
+    return 0;
+}
+SceModule *sceKernelFindModuleByUID(SceUID uid)
+{ assert(uid == load_result); return runtime_present ? &runtime_module : 0; }
+SceUID sceKernelLoadModuleBuffer(void *buffer, SceSize size, int flags, SceKernelLMOption *options)
+{
+    assert(worker_running && !interrupts && !renderer_started);
+    assert(buffer == tape_renderer_prx && size == tape_renderer_prx_size && !((uintptr_t)buffer % 64));
+    assert(flags == 0 && options->size == sizeof *options);
+    assert(options->mpidtext == PSP_MEMORY_PARTITION_USER && options->mpiddata == PSP_MEMORY_PARTITION_USER);
+    assert(!options->flags && !options->position && !options->access);
+    ++load_calls;
+    if (load_result >= 0) runtime_present = 1;
+    return load_result;
+}
+int sceKernelStartModule(SceUID uid, SceSize args, void *argp, int *status, void *options)
+{
+    assert(worker_running && !interrupts && !renderer_started);
+    assert(uid == load_result && !args && !argp && !options && runtime_present);
+    ++module_start_calls;
+    if (start_callback) {
+        assert(installed(&visualizer) == 17);
+        assert(!profile_checks && !renderer_started); /* No pointer to unstarted code. */
+        viz_present = 1;
+    }
+    *status = module_status;
+    if (start_auto_unloads) runtime_present = 0;
+    return module_start_result;
+}
+int sceKernelUnloadModule(SceUID uid)
+{
+    assert(worker_running && !interrupts && uid == load_result && runtime_present);
+    ++unload_calls;
+    runtime_present = 0;
+    return 0;
+}
 uintptr_t sctrlHENFindFunction(const char *module, const char *library, unsigned nid)
 { (void)module; (void)library; (void)nid; return 0; }
 STMOD_HANDLER sctrlHENSetStartModuleHandler(STMOD_HANDLER handler)
@@ -105,7 +159,7 @@ int tape_icon_redirect(void *text, size_t size, uint32_t base)
     return 1;
 }
 int tape_profile_matches(const void *text, size_t size, uint32_t base)
-{ (void)text; (void)size; (void)base; return 0; }
+{ (void)text; (void)size; (void)base; ++profile_checks; return 0; }
 uint32_t tape_play_state_address(const void *text, size_t size, uint32_t base)
 { (void)text; (void)size; (void)base; return 0; }
 
@@ -121,6 +175,17 @@ static void reset(void)
     previous_handler = 0;
     event = patched_base = seek_event = icon_event = guarded = 0;
     message_size = 0; messages[0] = 0;
+    renderer_started = worker_running = module_status = 0;
+    load_calls = module_start_calls = unload_calls = runtime_present = 0;
+    viz_present = profile_checks = start_auto_unloads = start_callback = 0;
+    load_result = module_start_result = 12;
+}
+
+static void run_worker(void)
+{
+    worker_running = 1;
+    assert(status_entry(0, 0) == 0);
+    worker_running = 0;
 }
 
 int main(void)
@@ -141,7 +206,8 @@ int main(void)
         reset(); resource_valid = 1;
         assert(module_start(0, 0) == 0 && !builds);
         usb_on_delay = i ? 0 : 1;
-        assert(status_entry(0, 0) == 0 && exits == 1);
+        run_worker();
+        assert(exits == 1 && renderer_started && load_calls == 1 && module_start_calls == 1);
         assert(delays == (i ? 60 : 1));
         assert(marker == (i ? 0 : 1));
         usb = 0; resource_valid = 0;
@@ -169,6 +235,7 @@ int main(void)
         if (i) start_result = -1; else create_result = -1;
         assert(module_start(0, 0) == 1 && installed == old_handler && !registered);
         assert(!started && !marker && !guarded && deleted == (int)i);
+        assert(!load_calls && !module_start_calls);
         assert(strstr(messages, "status thread could not start; hooks are off"));
     }
     reset(); start_result = -1; usb_on_start_failure = 1;
@@ -188,6 +255,42 @@ int main(void)
     reset(); guard_result = 0;
     assert(module_start(0, 0) == 1 && !registered && !checks && !builds);
 
-    puts("Plugin lifecycle: immediate first icon, per-load validation after USB/timeout, USB exclusion, thread failures and handler chaining passed.");
+    /* Renderer startup runs only from the worker. A visualizer that starts
+     * before or during that load must be revisited after successful startup. */
+    for (i = 0; i < 2; ++i) {
+        reset(); resource_valid = 1;
+        assert(module_start(0, 0) == 0 && !load_calls && !renderer_started);
+        if (i) start_callback = 1;
+        else {
+            viz_present = 1;
+            assert(installed(&visualizer) == 17 && !profile_checks);
+        }
+        run_worker();
+        assert(renderer_started && profile_checks == 1 && !unload_calls);
+        assert(strstr(messages, "embedded runtime started in user memory"));
+    }
+
+    /* Load errors, start errors and nonresident starts never enable the draw
+     * patch. Unload only if the module manager has not already cleaned up. */
+    for (i = 0; i < 4; ++i) {
+        reset(); resource_valid = 1; viz_present = 1;
+        if (i == 0) load_result = -123;
+        else if (i == 1) module_start_result = -456;
+        else if (i == 2) { module_start_result = 0; module_status = 1; start_auto_unloads = 1; }
+        else module_status = -789;
+        assert(module_start(0, 0) == 0);
+        run_worker();
+        assert(!renderer_started && !runtime_present && !profile_checks);
+        assert(load_calls == 1 && module_start_calls == (i ? 1 : 0));
+        assert(unload_calls == (i == 1 || i == 3));
+        assert(strstr(messages, i ? "RENDERER start failed" : "RENDERER load failed"));
+        assert(installed(&visualizer) == 17 && !profile_checks);
+    }
+    reset(); resource_valid = 1; runtime_present = 1;
+    assert(module_start(0, 0) == 0);
+    run_worker();
+    assert(!load_calls && !renderer_started && !unload_calls && runtime_present);
+
+    puts("Plugin lifecycle: immediate icon, per-load validation, USB, thread failures, embedded runtime startup/failure/catch-up and handler chaining passed.");
     return 0;
 }

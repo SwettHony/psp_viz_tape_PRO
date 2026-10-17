@@ -5,10 +5,9 @@ from pathlib import Path
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 root = Path(__file__).resolve().parents[1]
-version = '1.1'
+version = '1.2'
 card = 'seplugins/viz_tape/'
 files = {
-    card + 'viz_tape_render.prx': 'viz_tape_render.prx',
     card + 'viz_tape.prx': 'viz_tape.prx',
     'INSTALL.txt': 'INSTALL.txt',
     'README.md': 'README.md',
@@ -31,6 +30,7 @@ with ZipFile(archive, 'w', compression=ZIP_DEFLATED) as package:
 with ZipFile(archive) as package:
     assert package.testzip() is None
     assert set(package.namelist()) == set(contents)
+    assert [name for name in package.namelist() if name.endswith('.prx')] == [card + 'viz_tape.prx']
     assert not any(name.endswith(('.rco', '.gim', '.bin', '.elf', '.o')) for name in package.namelist())
 checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
 archive.with_suffix('.zip.sha256').write_text(f'{checksum}  {archive.name}\n')

@@ -1,4 +1,4 @@
-VIZ TAPE 1.1 — HOW TO INSTALL
+VIZ TAPE 1.2 — HOW TO INSTALL
 An animated cassette for the PSP Music player (PSP-1000, ARK-4, firmware 6.61)
 
 WHAT YOU NEED
@@ -15,9 +15,8 @@ INSTALL
 
   3. Open seplugins/PLUGINS.TXT on the memory card with a plain-text editor
      (TextEdit on a Mac: Format > Make Plain Text; Notepad on Windows).
-     If there is no PLUGINS.TXT, create one. Add these two lines at the end:
+     If there is no PLUGINS.TXT, create one. Add this one line at the end:
 
-       vsh, ms0:/seplugins/viz_tape/viz_tape_render.prx, on
        vsh, ms0:/seplugins/viz_tape/viz_tape.prx, on
 
      Keep any lines that are already there. Save it as PLUGINS.TXT.
@@ -31,13 +30,16 @@ INSTALL
   session. Nothing else to do.
 
 UPDATING FROM AN OLDER VERSION
-  Change "on" to "off" on both Viz Tape lines in PLUGINS.TXT, copy the new
-  seplugins folder over the old one, then change them back to "on".
+  Replace the two old Viz Tape lines in PLUGINS.TXT with the single line
+  above. Copy the new seplugins folder over the old one, then restart the
+  PSP before opening Music. Delete the old viz_tape_render.prx file; the
+  renderer is now included inside viz_tape.prx.
   An enabled.txt from version 1.0 is no longer needed; you can delete it.
 
 TURN OFF OR UNINSTALL
-  Turn off:  change "on" to "off" on both Viz Tape lines, then restart.
-  Uninstall: delete those two lines and the seplugins/viz_tape folder.
+  Turn off:  change "on" to "off" on the Viz Tape line, then restart.
+  Uninstall: delete that line and the seplugins/viz_tape folder, then restart
+             before opening Music again.
 
 IF THE PSP WON'T START PROPERLY
   Viz Tape skips itself for one start if the previous start crashed, so it
@@ -46,8 +48,13 @@ IF THE PSP WON'T START PROPERLY
   ARK's guide: https://github.com/PSP-Archive/ARK-4/wiki/Recovery
 
 IF THE CASSETTE DOESN'T SHOW UP
-  Check that both lines are in PLUGINS.TXT exactly as above, renderer first,
-  and that seplugins/viz_tape has viz_tape_render.prx and viz_tape.prx.
+  Check that the single line is in PLUGINS.TXT exactly as above,
+  and that seplugins/viz_tape has viz_tape.prx.
   The plugin writes notes to seplugins/viz_tape/status.txt.
+  A RENDERER load/start failure leaves the stock visualizer selected.
+
+TESTING STATUS
+  The single-file loader has passed host tests and PSP build checks.
+  Hardware testing of this new loader is still pending.
 
 More details: https://github.com/beckerd/psp_viz_tape
