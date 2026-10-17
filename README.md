@@ -75,41 +75,6 @@ embedded in `viz_tape.prx`. The old `enabled.txt` is also no longer used.
 - PSP-1000 (32 MB), 6.61 ARK-4 as shown in System Information,
   128 GB memory card, alongside xmb_gamecache.
 
-The cassette rendering features ran on that PSP with zero renderer errors in
-the two-plugin version. On 2026-10-17, the corrected single-file `1.2-dev2`
-build (commit `0494423`) passed its restart and Music-hook retest: the renderer
-started in user memory, the cassette icon was selected, playback-state binding
-succeeded, slot 7 was patched, and the boot guard cleared. The installed PRX
-matched the build checksum, and the generated icon passed integrity checks.
-Host sanitizer tests and the PSP binary audit also pass.
-
-The startup log's `devkit=06060010` is the plugin-facing compatibility value,
-not evidence of an installed 6.60 firmware. ARK
-[hooks the version API for plugins](https://github.com/PSP-Archive/ARK-4/blob/main/core/systemctrl/src/syspatch.c)
-and [returns the 6.60 value](https://github.com/PSP-Archive/ARK-4/blob/main/core/systemctrl/src/sctrl_hen.c)
-to support older plugins on 6.61. This retest does not establish compatibility
-with a PSP actually running 6.60.
-
-The newer `1.2-dev3` build removes the PSP-1000-only startup check, adds native
-PSP Go storage handling, and uses the actual user-memory partition for address
-validation. Host tests cover model IDs 0–10, both storage devices, normal and
-expanded user-memory ranges, and signature checks at relocated addresses.
-On 2026-10-17, the device log also confirmed successful startup and Music
-hooking for `1.2-dev3` (commit `c776a51`) on the same PSP-1000. It reported
-the expected user partition (`08800000`, size `01800000`), started the renderer,
-selected the cassette icon, bound playback state and patched slot 7. The
-installed PRX matched the build checksum, the generated icon passed integrity
-checks, and the boot guard was absent. An earlier icon-skip message was
-followed by successful selection; the log does not identify the initial cause.
-The final 1.2 release changes only the diagnostic version label from this
-tested build; there are no further runtime behavior changes.
-Hardware testing of this build on the PSP-2000, PSP-3000, Go and Street/E1000
-is **pending**, along with extended playback and suspend/resume testing.
-These models are enabled, rather than silently blocked
-as they were in 1.1. The plugin accepts 6.60/6.61 API values only when its exact
-module and resource checks pass. Reports are welcome — please include
-`seplugins/viz_tape/status.txt`, your model and the System Information version.
-
 ## If something goes wrong
 
 - **Boot guard.** For the first 15 seconds after each XMB start, the plugin
