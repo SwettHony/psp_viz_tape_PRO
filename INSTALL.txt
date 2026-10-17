@@ -27,8 +27,8 @@ INSTALL
   5. Play a song in the Music player and switch to the LAST visualizer.
 
   The first time the PSP starts with Viz Tape, it makes the little cassette
-  icon for the visualizer menu by itself (a few seconds after the home screen
-  appears). Nothing else to do.
+  icon for the visualizer menu during startup, ready for the first Music
+  session. Nothing else to do.
 
 UPDATING FROM AN OLDER VERSION
   Change "on" to "off" on both Viz Tape lines in PLUGINS.TXT, copy the new

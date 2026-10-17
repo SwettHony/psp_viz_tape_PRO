@@ -18,7 +18,6 @@ PSP_NO_CREATE_MAIN_THREAD();
 
 static STMOD_HANDLER previous_handler;
 static volatile unsigned event, patched_base, seek_event;
-static volatile int icon_ready;
 static volatile unsigned icon_event;
 static const char *const icon_events[] = {
     "ICON skipped: resource missing or failed validation",
@@ -112,7 +111,7 @@ static void patch_visualizer(SceModule *module)
     }
     /* Optional: without a verified state word, seeking simply winds normally. */
     {
-        uint32_t state = tape_play_state_address((void *)module->text_addr,
+        uintptr_t state = tape_play_state_address((void *)module->text_addr,
                                                  module->text_size, module->text_addr);
         bindings.play_state = state && module_contains(module, state, 4) &&
             !tape_range_contains(module->text_addr, module->text_size, state, 4) ?
@@ -137,7 +136,7 @@ static void patch_visualizer(SceModule *module)
 static int on_module_start(SceModule *module)
 {
     int result = previous_handler ? previous_handler(module) : 0;
-    if (module && icon_ready && strcmp(module->modname, "music_player_module") == 0) {
+    if (module && strcmp(module->modname, "music_player_module") == 0) {
         int irq;
         icon_event = 3;
         if (module->nsegment == 2 && module->text_size == TAPE_MUSIC_TEXT_SIZE &&
@@ -145,12 +144,20 @@ static int on_module_start(SceModule *module)
             module->segmentaddr[0] == module->text_addr &&
             module->segmentsize[0] == TAPE_MUSIC_TEXT_SIZE &&
             tape_user_range(module->text_addr, TAPE_MUSIC_TEXT_SIZE)) {
-            irq = sceKernelCpuSuspendIntr();
-            if (tape_icon_redirect((void *)module->text_addr, module->text_size, module->text_addr)) {
-                sceKernelDcacheWritebackAll();
-                icon_event = 2;
+            /* USB may have replaced or removed the file since startup. Check
+             * it for every new Music module, even after the reporter exits.
+             * This bounded read runs with interrupts enabled; no files are
+             * created from the module-start callback. */
+            icon_event = 0;
+            if (!usb_active() && tape_icon_resource_ready() && !usb_active()) {
+                irq = sceKernelCpuSuspendIntr();
+                icon_event = 3;
+                if (tape_icon_redirect((void *)module->text_addr, module->text_size, module->text_addr)) {
+                    sceKernelDcacheWritebackAll();
+                    icon_event = 2;
+                }
+                sceKernelCpuResumeIntr(irq);
             }
-            sceKernelCpuResumeIntr(irq);
         }
     }
     if (module && strcmp(module->modname, "visualizer_module") == 0) patch_visualizer(module);
@@ -168,13 +175,6 @@ static int reporter(SceSize args, void *argp)
         sceKernelDelayThread(5000000);
         /* Stop card logging when USB storage is activated for the host. */
         if (usb_active()) break;
-        /* First start without a valid icon: make it from the stock resource,
-         * after XMB has settled and before the Music player usually opens. */
-        if (i == 0 && !icon_ready) {
-            int built = tape_icon_build();
-            icon_event = built ? 4 : 5;
-            icon_ready = built;
-        }
         if (guarded && (i+1)*5 >= TAPE_GUARD_SECONDS) {
             guarded = 0;
             if (!tape_guard_finish()) report("WARNING: could not clear boot-guard.txt\n");
@@ -219,17 +219,28 @@ int module_start(SceSize args, void *argp)
     }
     guarded = 1;
     report("Viz Tape " VIZ_TAPE_VERSION " started; devkit=%08X model=0\n", version);
-    icon_ready = tape_icon_resource_ready();
-    icon_event = icon_ready ? 1 : 0;
-    previous_handler = sctrlHENSetStartModuleHandler(on_module_start);
+    /* Finish the first-install build before registering hooks or returning
+     * to XMB startup, so even the first Music load can select the icon. */
+    icon_event = tape_icon_resource_ready() ? 1 : 0;
+    if (!icon_event && !usb_active()) {
+        if (tape_icon_build()) {
+            report("%s\n", icon_events[4]);
+            icon_event = 1;
+        } else icon_event = 5;
+    }
     tid = sceKernelCreateThread("VizTapeStatus", reporter, 0x30, 8192, 0, 0);
     if (tid >= 0 && sceKernelStartThread(tid, 0, 0) < 0) {
         sceKernelDeleteThread(tid);
         tid = -1;
     }
-    /* Without the reporter nothing would clear the guard, and every other
-     * start would be skipped. Clear it now; the hooks themselves are unchanged. */
-    if (tid < 0 && guarded) { guarded = 0; tape_guard_finish(); }
+    if (tid < 0) {
+        report("Viz Tape " VIZ_TAPE_VERSION " SKIPPED: status thread could not start; hooks are off.\n");
+        /* No hook has escaped, so this failed activation can safely unload.
+         * If USB owns the card, leave the marker for the next boot instead. */
+        if (!usb_active() && tape_guard_finish()) guarded = 0;
+        return 1;
+    }
+    previous_handler = sctrlHENSetStartModuleHandler(on_module_start);
     return 0;
 }
 

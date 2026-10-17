@@ -3,7 +3,8 @@
 #include "icon.h"
 #include "icon_resource.h"
 
-/* Read-only preflight at plugin startup, never inside a module/draw callback.
+/* Read-only preflight at startup and before each Music-module redirect.
+ * Runs with interrupts enabled, never inside a draw callback.
  * Manual copies can be verified with SHA256SUMS; this check catches missing,
  * partial, stale or accidentally damaged copies before changing a RAM path. */
 int tape_icon_resource_ready(void)

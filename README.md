@@ -49,8 +49,8 @@ this project is not for you.
 5. Eject the card, exit USB mode and restart your PSP.
 6. Play a song in the Music player and switch to the last visualizer.
 
-That's it. On the first start the plugin creates the cassette icon by itself
-(it shows up a few seconds after the XMB appears). [INSTALL.txt](INSTALL.txt)
+That's it. On the first start the plugin creates the cassette icon during
+startup, ready for the first Music session. [INSTALL.txt](INSTALL.txt)
 in the ZIP has the same steps, plus how to update and uninstall.
 
 **Updating from 1.0:** turn both lines `off`, copy the new `seplugins` folder
@@ -111,10 +111,10 @@ make
 `make release` builds the release ZIP.
 
 `make host-check` runs the host tests (rendering, animation, mesh, frame cache,
-address checks, activation, boot guard and the on-PSP icon builder) under
-AddressSanitizer and UndefinedBehaviorSanitizer. `make profile-check` and `make icon-check` also
-verify the firmware signatures, but need private firmware captures that are
-not in this repository.
+address checks, startup and USB lifecycle, boot guard and the on-PSP icon
+builder) under AddressSanitizer and UndefinedBehaviorSanitizer.
+`make profile-check` and `make icon-check` also verify the firmware signatures,
+but need private firmware captures that are not in this repository.
 
 ## How it works (short version)
 
@@ -137,8 +137,9 @@ own `flash0:/vsh/resource/visualizer_plugin.rco` (read-only), checks that
 applying the patch gives exactly the expected result, and only then writes
 `ms0:/seplugins/viz_tape/visualizer.rco`. A second guarded change then points
 the Music player at that file (in RAM) after checking its exact size and
-checksum. Only the last visualizer's thumbnail differs. Nothing is ever
-written to flash.
+checksum again on each Music-module load, including after USB mode. A missing
+or invalid file leaves the stock icon selected. Only the last visualizer's
+thumbnail differs. Nothing is ever written to flash.
 
 
 

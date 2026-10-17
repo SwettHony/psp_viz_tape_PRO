@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Validate the icon resource again before every Music-module redirect, so a
+  file removed or changed over USB cannot reuse its startup validation. Keep
+  the stock icon when validation fails or USB storage is active.
+- Build the first-install icon during startup, before registering hooks, so
+  opening Music immediately no longer misses the cassette icon.
+- Skip activation if the status thread cannot be created or started. Hooks
+  are registered only after that succeeds, keeping active hooks protected by
+  the boot guard during startup.
+- Add sanitizer-backed lifecycle tests for first launch, storage changes,
+  reporter exit, USB state changes, thread failures and handler chaining.
+
 ## 1.1 — the icon makes itself; simpler install
 
 - **No more icon step.** The kernel plugin now creates the cassette icon on
