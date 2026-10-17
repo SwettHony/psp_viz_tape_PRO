@@ -6,9 +6,8 @@ I wanted the PSP's Music player to look like a tape deck, so this plugin
 turns its last visualizer into an animated cassette: the reels turn, the tape
 winds from one reel to the other, and after 15 minutes it flips to Side B.
 
-The original two-plugin version runs on my PSP-1000 with ARK-4. The initial
-single-file loader froze during startup. This branch corrects its loader
-arguments and buffer bounds; the corrected build still needs a PSP retest.
+The corrected single-file version starts successfully on my PSP-1000 with
+ARK-4 and hooks the Music player. See [Tested on](#tested-on) for details.
 
 This was written by Astra and Opus5.5 if you do not want code written by AI on your PSP
 this project is not for you.
@@ -60,15 +59,21 @@ embedded in `viz_tape.prx`. The old `enabled.txt` is also no longer used.
 
 ## Tested on
 
-- PSP-1000 (32 MB), ARK-4, 6.61, 128 GB memory card, alongside xmb_gamecache.
+- PSP-1000 (32 MB), ARK, firmware reporting 6.60 (`devkit=06060010`),
+  128 GB memory card, alongside xmb_gamecache.
 
 The cassette rendering features ran on that PSP with zero renderer errors in
-the two-plugin version. The initial single-file loader failed its startup test;
-the corrected `1.2-dev2` build has passed host tests and the PSP build audit,
-but hardware validation is pending. The plugin checks the
-exact firmware code it patches and goes inert on anything else, but other models, firmware
-versions and PSP Go internal storage are **unverified**. Reports (good and
-bad) are very welcome — please open an issue.
+the two-plugin version. On 2026-10-17, the corrected single-file `1.2-dev2`
+build (commit `0494423`) passed its restart and Music-hook retest: the renderer
+started in user memory, the cassette icon was selected, playback-state binding
+succeeded, slot 7 was patched, and the boot guard cleared. The installed PRX
+matched the build checksum, and the generated icon passed integrity checks.
+Host sanitizer tests and the PSP binary audit also pass.
+
+Extended playback and suspend/resume testing of this single-file build remains
+outstanding. The plugin accepts 6.60/6.61 only when its exact module and resource
+checks pass. Other models and PSP Go internal storage are **unverified**.
+Reports (good and bad) are very welcome — please open an issue.
 
 ## If something goes wrong
 
@@ -95,14 +100,15 @@ bad) are very welcome — please open an issue.
 
 ## Known limitations
 
-- 6.61 firmware layout only; on anything else the plugin stays inert.
+- Only the matching 6.60/6.61 firmware layouts are supported; other layouts
+  leave the stock visualizer selected.
 - Only the last visualizer is replaced; the spectrum and others are untouched.
 - The tape clock restarts when the XMB restarts, and is not tied to the
   position in the song.
 - Don't remove the memory card while the Music player is open: the player
   reads the cassette icon's `visualizer.rco` from the card.
-- The icon is only made on the supported 6.61 firmware. On anything else the
-  stock icon stays (the cassette visualizer is skipped there anyway).
+- The icon is only made when the stock resource matches the supported patch.
+  A different resource keeps the stock icon.
 
 ## Building from source
 

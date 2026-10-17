@@ -16,8 +16,12 @@
 - Preserve the failed startup log when the boot guard skips activation, and
   flush renderer load/start checkpoints. Corrected logs identify `1.2-dev2`.
 - Add regressions for the firmware argument order, padded buffer and cleanup,
-  allocation failures, and recovery-log preservation. The corrected loader
-  is host/build tested; a PSP hardware retest is pending.
+  allocation failures, and recovery-log preservation.
+- Hardware retest passed on 2026-10-17 with `1.2-dev2` (`0494423`): PSP-1000,
+  firmware reporting 6.60, ARK and xmb_gamecache. Startup completed, the user
+  renderer started, the icon and playback-state binding succeeded, slot 7 was
+  patched, and the boot guard cleared. Host tests and the binary audit pass;
+  extended playback and suspend/resume testing of this build is outstanding.
 
 - Validate the icon resource again before every Music-module redirect, so a
   file removed or changed over USB cannot reuse its startup validation. Keep
