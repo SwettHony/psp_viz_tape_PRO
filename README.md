@@ -33,8 +33,9 @@ this project is not for you.
 
 ## Install
 
-1. Unzip `viz_tape-v1.2.zip`. This version is not published yet; build the ZIP
-   with `make release` as described below.
+1. Download [viz_tape-v1.2.zip](https://github.com/beckerd/psp_viz_tape/releases/download/v1.2/viz_tape-v1.2.zip)
+   from the [1.2 release](https://github.com/beckerd/psp_viz_tape/releases/tag/v1.2)
+   and unzip it.
 2. Connect your PSP to your computer in USB mode.
 3. Copy the `seplugins` folder from the ZIP onto the root of the memory card
    or PSP Go internal storage.
@@ -99,6 +100,8 @@ selected the cassette icon, bound playback state and patched slot 7. The
 installed PRX matched the build checksum, the generated icon passed integrity
 checks, and the boot guard was absent. An earlier icon-skip message was
 followed by successful selection; the log does not identify the initial cause.
+The final 1.2 release changes only the diagnostic version label from this
+tested build; there are no further runtime behavior changes.
 Hardware testing of this build on the PSP-2000, PSP-3000, Go and Street/E1000
 is **pending**, along with extended playback and suspend/resume testing.
 These models are enabled, rather than silently blocked

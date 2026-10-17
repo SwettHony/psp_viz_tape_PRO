@@ -16,7 +16,7 @@
 #include "module_loader.h"
 
 PSP_MODULE_INFO("viz_tape", PSP_MODULE_KERNEL, 1, 2);
-#define VIZ_TAPE_VERSION "1.2-dev3"
+#define VIZ_TAPE_VERSION "1.2"
 PSP_NO_CREATE_MAIN_THREAD();
 
 static STMOD_HANDLER previous_handler;

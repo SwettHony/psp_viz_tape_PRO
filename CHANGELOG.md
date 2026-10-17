@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2 — unreleased
+## 1.2 — 2026-10-17
 
 - Enable all retail PSP models: 1000, 2000, 3000, Go and Street/E1000. Version
   1.1's startup check silently rejected every model except the 1000.
@@ -10,7 +10,7 @@
   renderer. Validate relocated modules in expanded user RAM without widening
   checks on devices where that RAM is unavailable. Retain exact firmware
   signatures, resource validation and the boot guard.
-- Log model, storage and memory bounds as `1.2-dev3`. Add sanitizer regressions
+- Log model, storage and memory bounds. Add sanitizer regressions
   across model IDs, both storage devices, low/high address relocations and
   invalid partition data.
 - Confirm `1.2-dev3` (`c776a51`) startup and Music-hook success from the
@@ -20,6 +20,8 @@
   slot 7 was patched. The installed binary and icon passed integrity checks;
   the boot guard was absent. Other models, extended playback and
   suspend/resume still need hardware testing.
+- Finalize the diagnostic version label as `1.2`; runtime behavior is
+  unchanged from the hardware-tested `1.2-dev3` build.
 
 - Install one `viz_tape.prx` and one PLUGINS.TXT entry. The kernel plugin
   embeds the renderer and a worker loads it into user memory; nothing is
